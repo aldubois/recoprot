@@ -6,12 +6,12 @@ Utility module related to  PDB files parsing.
 
 import warnings
 
-from biopandas.pdb import PandasPdb
+from Bio.PDB.PDBParser import PDBParser
 
 
 def read_pdb(filename):
     """
-    Read a PDB file and output a biopandas PandasPdb object.
+    Read a PDB file and output a biopython PDBParser object.
 
     Parameters
     ----------
@@ -20,7 +20,10 @@ def read_pdb(filename):
 
     Returns
     -------
-    PandasPdb
-        Object representing the PDB file.
+    Bio.PDB.Structure.Structure
+        Structure of the protein.
     """
-    return PandasPdb().read_pdb(filename)
+    parser = PDBParser()
+    with warnings.catch_warnings(record=True) as w:
+        structure = parser.get_structure("", filename)
+    return structure

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Tests of the Pdb file reader module.
+Tests of the preprocessor functions.
 """
 
 import os
@@ -11,12 +11,12 @@ from .context import recoprot
 THIS_DIR = os.path.dirname(__file__)
 
 
-def test_reader():
+def test_pdb2fasta():
     """
     Verify PDB reading file.
     """
     structure = recoprot.read_pdb(os.path.join(THIS_DIR, "data", "T0759-D1.pdb"))
-    atoms = list(structure.get_atoms())
-    assert str(atoms[0]) == "<Atom N>"
-    assert str(atoms[1]) == "<Atom CA>"
-    return    
+    calc = recoprot.pdb2fasta(structure)
+    ref = "VVIHPDPGRELSPEEAHRAGLIDWNMFVKLRSQE"
+    assert ref == calc
+    return
