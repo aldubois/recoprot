@@ -5,6 +5,7 @@ Tests of the preprocessor functions.
 """
 
 import os
+import numpy as np
 from .context import recoprot
 
 
@@ -20,4 +21,23 @@ def test_pdb2fasta():
     calc = recoprot.pdb2fasta(chain)[:10]
     ref = "MELKNSISDY"
     assert ref == calc
+    return
+
+
+def test_encode_protein_atoms():
+    
+    atoms = ['O2', 'CB', "H", "N", "SE", "O", "CG"]
+    ref = np.array(
+        [[0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+         [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+         [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+         [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]]
+    )
+    calc = recoprot.encode_protein_atoms(atoms)
+    print(calc.toarray())
+    print(ref)
+    assert (calc.toarray() == ref).all()
     return
