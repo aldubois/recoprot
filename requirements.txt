@@ -1,2 +1,5 @@
 sphinx
 pytest
+biopython
+biopandas
+sklearn
