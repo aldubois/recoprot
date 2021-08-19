@@ -13,10 +13,11 @@ THIS_DIR = os.path.dirname(__file__)
 
 def test_pdb2fasta():
     """
-    Verify PDB reading file.
+    Verify function generating the fasta residue list on the first 10 residues.
     """
-    structure = recoprot.read_pdb(os.path.join(THIS_DIR, "data", "T0759-D1.pdb"))
-    calc = recoprot.pdb2fasta(structure)
-    ref = "VVIHPDPGRELSPEEAHRAGLIDWNMFVKLRSQE"
+    fname = os.path.join(THIS_DIR, "data", "model.000.00.pdb")
+    _, chain = recoprot.read_pdb_two_proteins(fname)
+    calc = recoprot.pdb2fasta(chain)[:10]
+    ref = "MELKNSISDY"
     assert ref == calc
     return

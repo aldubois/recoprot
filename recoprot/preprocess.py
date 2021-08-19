@@ -5,14 +5,14 @@ Data preprocessor.
 """
 
 
-def pdb2fasta(structure):
+def pdb2fasta(chain):
     """
     Generate a FASTA sequence from the atom structure.
 
     Parameters
     ----------
-    structure: Bio.PDB.Structure.Structure
-        Structure of the protein.
+    structure: Bio.PDB.Chain.Chain
+        Protein's chain.
 
     Returns
     -------
@@ -42,4 +42,4 @@ def pdb2fasta(structure):
         "TRP": "W",
         "TYR": "Y"
     }
-    return "".join(TABLE[residu.get_resname()] for residu in structure.get_residues())
+    return "".join(TABLE[residu.get_resname()] for residu in chain.get_residues())
