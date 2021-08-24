@@ -6,7 +6,9 @@
 
 ### Clone the repository
 
+```bash
 git clone https://github.com/aldubois/recoprot.git
+```
 
 
 ### Setup and enter your virtual environment
