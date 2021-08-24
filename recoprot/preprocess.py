@@ -6,6 +6,7 @@ Data preprocessor.
 
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
+from Bio.PDB.NeighborSearch import NeighborSearch
 
 
 CATEGORIES = {
@@ -103,3 +104,69 @@ def encode_protein_residues(residues):
                                      for residue in residues])
     encoded_residues = encoder.transform(categorized_residues.reshape(-1, 1))
     return encoded_residues
+
+
+def encode_neighbors(atoms, n_neighbors=10):
+    """
+    Encode the information of the closest neighbors.
+
+    Parameters
+    ----------
+    atoms: Iterator of Bio.PDB.Atom.Atom
+        Liste d'atomes de la proteine avec leur positions.
+    n_neighbors : int
+        Number of neighbors to consider.
+    """
+    # Search neighbors
+    searcher = NeighborSearch(atoms)
+    found_neighbors = np.array(searcher.search_all(6, "A"))
+
+    # Sort neighbors by distance
+    distances = (found_neighbors[:, 0] - found_neighbors[:, 1]).astype(float)
+    neighbors = found_neighbors[np.argsort(distances)]
+
+    # Process IDs for matching
+    sources, destinations = neighbors[:, 0], neighbors[:, 1]
+    atoms_id = np.array([atom.get_serial_number() for atom in atoms]).astype(int)
+    residues_id = np.array([atom.get_parent().get_id()[1] for atom in atoms]).astype(int)
+
+    # Initialize the two neighbors list: in the same residue or out of it.
+    neighbors_in = - np.ones((len(atoms), n_neighbors), dtype=int)
+    neighbors_out = - np.ones((len(atoms), n_neighbors), dtype=int)
+    indexes_in = np.zeros(len(atoms), dtype=int)
+    indexes_out = np.zeros(len(atoms), dtype=int)
+
+    for src, dest in zip(sources, destinations):
+
+        # Extract ids
+        src_atom_id = src.get_serial_number()
+        src_residue_id = src.get_parent().get_id()[1]
+        dest_atom_id = dest.get_serial_number()
+        dest_residue_id = dest.get_parent().get_id()[1]
+
+        # Find the index of the src and destination in the atoms chain
+        src_index = np.where(src_atom_id == atoms_id)[0][0]
+        dest_index = np.where(dest_atom_id == atoms_id)[0][0]
+
+        # We store the closest neighbors in a numpy array
+        
+        # Atoms are in the same residues 
+        if (src_residue_id == dest_residue_id):
+            if (indexes_in[src_index] < n_neighbors):
+                neighbors_in[src_index][indexes_in[src_index]] = dest_index
+                indexes_in[src_index] += 1
+            if (indexes_in[dest_index] < n_neighbors):
+                neighbors_in[dest_index][indexes_in[dest_index]] = src_index
+                indexes_in[dest_index] += 1
+
+        # Atoms are in different residues
+        else:
+            if (indexes_out[src_index] < n_neighbors):
+                neighbors_out[src_index][indexes_out[src_index]] = dest_index
+                indexes_out[src_index] += 1
+            if (indexes_out[dest_index] < n_neighbors):
+                neighbors_out[dest_index][indexes_out[dest_index]] = src_index
+                indexes_out[dest_index] += 1
+
+        
+    return neighbors_in, neighbors_out
