@@ -3,3 +3,4 @@ pytest
 biopython
 biopandas
 sklearn
+torch
