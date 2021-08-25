@@ -60,6 +60,26 @@ def pdb2fasta(chain):
                    for residu in chain.get_residues())
 
 
+def preprocess_2_proteins_atoms(chain1, chain2):
+    """
+    Preprocess the 2 proteins chain to the format of the merge operation.
+
+    Parameters
+    ----------
+    chain1: Bio.PDB.Chain.Chain
+        Ligand protein's chain.
+    chain2: Bio.PDB.Chain.Chain
+        Receptor protein's chain.
+
+    Returns
+    -------
+
+    """
+    atoms1 = [encode_protein_atoms([atom.get_name() for atom in res.get_atoms()]).toarray() for res in residues1]
+    atoms2 = [encode_protein_atoms([atom.get_name() for atom in res.get_atoms()]).toarray() for res in residues2]
+    return atoms1, atoms2
+
+
 def encode_protein_atoms(atoms):
     """
     Encode protein atoms list into integer array.
