@@ -8,5 +8,5 @@ from .preprocess import (
     encode_neighbors,
     preprocess_2_proteins_atoms
 )
-from .nn import merge_residues
+from .nn import merge_residues, NoConv
 from .pssm import call_psiblast

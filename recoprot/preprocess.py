@@ -64,6 +64,8 @@ def preprocess_2_proteins_atoms(chain1, chain2):
     """
     Preprocess the 2 proteins chain to the format of the merge operation.
 
+    For each residue, we encode each of its atoms and then take the average.
+
     Parameters
     ----------
     chain1: Bio.PDB.Chain.Chain
@@ -73,11 +75,20 @@ def preprocess_2_proteins_atoms(chain1, chain2):
 
     Returns
     -------
-
+    list of np.ndarray
+        For each residue in the protein chain 1,
+        the average of each encoded atoms in this residue.
+    list of np.ndarray
+        For each residue in the protein chain 2,
+        the average of each encoded atoms in this residue.
     """
-    atoms1 = [encode_protein_atoms([atom.get_name() for atom in res.get_atoms()]).toarray() for res in residues1]
-    atoms2 = [encode_protein_atoms([atom.get_name() for atom in res.get_atoms()]).toarray() for res in residues2]
-    return atoms1, atoms2
+    residues1 = chain1.get_residues()
+    residues2 = chain2.get_residues()
+    encoded_atoms1 = [encode_protein_atoms([atom.get_name() for atom in res.get_atoms()]).toarray() for res in residues1]
+    encoded_atoms2 = [encode_protein_atoms([atom.get_name() for atom in res.get_atoms()]).toarray() for res in residues2]
+    mean_per_residue1 = [atoms.mean(axis=0) for atoms in encoded_atoms1]
+    mean_per_residue2 = [atoms.mean(axis=0) for atoms in encoded_atoms2]
+    return mean_per_residue1, mean_per_residue2
 
 
 def encode_protein_atoms(atoms):
