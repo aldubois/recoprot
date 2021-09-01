@@ -4,6 +4,8 @@
 Data preprocessor.
 """
 
+from itertools import product
+
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from Bio.PDB.NeighborSearch import NeighborSearch
@@ -201,3 +203,31 @@ def encode_neighbors(atoms, n_neighbors=10):
 
         
     return neighbors_in, neighbors_out
+
+
+def label_data(chain1, chain2, limit=7.):
+    """
+    Determines if residues from two chains interact with each other.
+
+    Parameters
+    ----------
+    chain1: Bio.PDB.Chain.Chain
+        Ligand protein's chain.
+    chain2: Bio.PDB.Chain.Chain
+        Receptor protein's chain.
+    limit: float
+        Distance limit in Angstrom.
+
+    Returns
+    -------
+    np.ndarray of bool
+        For each pair of residue, indicate if the two
+        residues interact with each other.
+    """
+    # Get the carbon atoms (there should be exactly one per residue)
+    carbons1 = [atom for atom in chain1.get_atoms() if atom.get_name() == "C"]
+    carbons2 = [atom for atom in chain2.get_atoms() if atom.get_name() == "C"]
+
+    # Compute labels
+    labels = np.array([i - j < limit for i, j in product(carbons1, carbons2)])
+    return labels

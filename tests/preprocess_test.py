@@ -83,6 +83,22 @@ def test_encode_neighbors():
     return
 
 
+def test_label_data():
+    """
+    """
+    fname = os.path.join(THIS_DIR, "data", "model.000.00.pdb")
+    chain1, chain2 = recoprot.read_pdb_two_proteins(fname)
+    labels = recoprot.label_data(chain1, chain2)
+    # Computed manually distances on a few cases
+    assert labels[0] == True
+    assert labels[1] == True
+    assert labels[2] == True
+    assert labels[87] == False
+    assert labels[88] == False
+    assert labels[78] == False
+    return
+
+
 def ref_neigh1(atom_list):
     """
     Reference function coming from Soumyadip repository.
@@ -166,8 +182,5 @@ def ref_neigh1(atom_list):
 
                 neigh_diff_res[neigh_index][diff_flag[neigh_index]]=source_index
                 diff_flag[neigh_index]+=1
-
-
-
     
     return neigh_same_res,neigh_diff_res

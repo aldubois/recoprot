@@ -6,7 +6,8 @@ from .preprocess import (
     encode_protein_atoms,
     encode_protein_residues,
     encode_neighbors,
-    preprocess_2_proteins_atoms
+    preprocess_2_proteins_atoms,
+    label_data
 )
 from .nn import merge_residues, NoConv
 from .pssm import call_psiblast
