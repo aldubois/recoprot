@@ -225,8 +225,8 @@ def label_data(chain1, chain2, limit=7.):
         residues interact with each other.
     """
     # Get the carbon atoms (there should be exactly one per residue)
-    carbons1 = [atom for atom in chain1.get_atoms() if atom.get_name() == "C"]
-    carbons2 = [atom for atom in chain2.get_atoms() if atom.get_name() == "C"]
+    carbons1 = [atom for atom in chain1.get_atoms() if atom.get_name() == "CA"]
+    carbons2 = [atom for atom in chain2.get_atoms() if atom.get_name() == "CA"]
 
     # Compute labels
     labels = np.array([i - j < limit for i, j in product(carbons1, carbons2)])
