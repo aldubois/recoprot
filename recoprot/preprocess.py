@@ -9,6 +9,7 @@ from itertools import product
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from Bio.PDB.NeighborSearch import NeighborSearch
+import torch
 
 
 CATEGORIES = {
@@ -60,6 +61,35 @@ def pdb2fasta(chain):
     # Table extracted from https://cupnet.net/pdb2fasta/
     return "".join(RESIDUES_TABLE[residu.get_resname()]
                    for residu in chain.get_residues())
+
+
+def preprocess_protein(chain):
+    """
+    Preprocess a protein chain to the input data format of the GNN.
+
+    Parameters
+    ----------
+    chain: Bio.PDB.Chain.Chain
+        Protein's chain.
+
+    Returns
+    -------
+    tuple of torch.Tensor
+        Tensors containing the atoms encoding, the residues encoding
+        and the neighbors encoding.
+    """
+    atoms = list(chain.get_atoms())
+    residues = [atom.get_parent().get_resname() for atom in atoms]
+    x_atoms = encode_protein_atoms(atoms).toarray()
+    x_residues = encode_protein_residues(residues).toarray()
+    x_same_neigh, x_diff_neigh = encode_neighbors(atoms)
+    x = (
+        torch.from_numpy(x_atoms.astype(np.float32)),
+        torch.from_numpy(x_residues.astype(np.float32)),
+        torch.from_numpy(x_same_neigh),
+        torch.from_numpy(x_diff_neigh)
+    )
+    return x
 
 
 def preprocess_2_proteins_atoms(chain1, chain2):
@@ -123,7 +153,7 @@ def encode_protein_residues(residues):
     Parameters
     ----------
     residues: list of str
-        List of residues name from a protein.
+        List of residue name per atom in a protein.
 
     Returns
     -------

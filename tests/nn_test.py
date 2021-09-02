@@ -4,22 +4,21 @@
 Test a forward pass of the different Torch neural network.
 """
 
+import numpy as np
 import torch
 import recoprot
 
 
-def test_no_conv():
+def test_complete_network():
 
     # Preprocess the data
     chain1, chain2 = recoprot.read_pdb_two_proteins("tests/data/model.000.00.pdb")
-    atoms1, atoms2 = recoprot.preprocess_2_proteins_atoms(chain1, chain2)
-    res = recoprot.merge_residues(atoms1, atoms2)
-    x = torch.from_numpy(res).type(torch.FloatTensor)
-
-    # Create the neural network 
-    fcnn = recoprot.NoConv([128, 256])
-
-    # Call the forward pass
-    output = fcnn.forward(x)
-    assert(output.shape == (res.shape[0], 256))
+    residues1 = np.array([atom.get_parent().get_id()[1]
+                          for atom in chain1.get_atoms()])
+    residues2 = np.array([atom.get_parent().get_id()[1]
+                          for atom in chain2.get_atoms()])
+    nn = recoprot.CompleteNetwork([128, 256], residues1, residues2)
+    x = (recoprot.preprocess_protein(chain1),
+         recoprot.preprocess_protein(chain2))
+    res = nn.forward(x)
     return
