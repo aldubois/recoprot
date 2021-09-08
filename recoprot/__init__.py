@@ -3,6 +3,7 @@
 from .reader import read_pdb, read_pdb_two_proteins
 from .preprocess import (
     pdb2fasta,
+    preprocess_file,
     preprocess_protein,
     encode_protein_atoms,
     encode_protein_residues,
