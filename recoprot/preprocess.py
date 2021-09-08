@@ -4,12 +4,17 @@
 Data preprocessor.
 """
 
+# Standard Library
 from itertools import product
 
+# External Dependencies
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from Bio.PDB.NeighborSearch import NeighborSearch
 import torch
+
+# Local import
+from .reader import read_pdb_two_proteins
 
 
 CATEGORIES = {
@@ -61,6 +66,19 @@ def pdb2fasta(chain):
     # Table extracted from https://cupnet.net/pdb2fasta/
     return "".join(RESIDUES_TABLE[residu.get_resname()]
                    for residu in chain.get_residues())
+
+
+def preprocess_file(filename):
+    """
+    Do the full preprocessing of a file containing 2 proteins.
+
+    The data input of the GNN is generated from the file, as well as
+    the data label, that will be used as the target of the network.
+    """
+    chain1, chain2 = read_pdb_two_proteins(filename)
+    x = (preprocess_protein(chain1), preprocess_protein(chain2))
+    target = label_data(chain1, chain2)
+    return x, target
 
 
 def preprocess_protein(chain):
@@ -235,7 +253,7 @@ def encode_neighbors(atoms, n_neighbors=10):
     return neighbors_in, neighbors_out
 
 
-def label_data(chain1, chain2, limit=7.):
+def label_data(chain1, chain2, limit=6.):
     """
     Determines if residues from two chains interact with each other.
 
