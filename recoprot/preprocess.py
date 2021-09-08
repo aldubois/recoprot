@@ -72,13 +72,35 @@ def preprocess_file(filename):
     """
     Do the full preprocessing of a file containing 2 proteins.
 
-    The data input of the GNN is generated from the file, as well as
-    the data label, that will be used as the target of the network.
+    The data input of the GNN is generated from the file, the residue
+    number per atom for both proteins as well as the data label, that
+    will be used as the target of the network.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the PDB file to preprocess (containing 2 proteins).
+
+
+    Returns
+    -------
+    tuple of tuple of torch.tensor
+        Input of the GNN.
+    np.array of int
+        Residue number for each atom in the protein 1.
+    np.array of int
+        Residue number for each atom in the protein 2.
+    torch.tensor of float
+        Target labels of the GNN.
     """
     chain1, chain2 = read_pdb_two_proteins(filename)
+    residues1 = np.array([atom.get_parent().get_id()[1]
+                          for atom in chain1.get_atoms()])
+    residues2 = np.array([atom.get_parent().get_id()[1]
+                          for atom in chain2.get_atoms()])
     x = (preprocess_protein(chain1), preprocess_protein(chain2))
     target = label_data(chain1, chain2)
-    return x, target
+    return x, residues1, residues2, target
 
 
 def preprocess_protein(chain):
