@@ -90,7 +90,7 @@ def test_label_data():
     chain1, chain2 = recoprot.read_pdb_two_proteins(fname)
     labels = recoprot.label_data(chain1, chain2)
     # Computed manually distances on a few cases
-    assert labels[0] == True
+    assert labels[0] == False
     assert labels[1] == True
     assert labels[2] == True
     assert labels[87] == False
