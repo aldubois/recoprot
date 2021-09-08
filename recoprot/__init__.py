@@ -11,5 +11,5 @@ from .preprocess import (
     preprocess_2_proteins_atoms,
     label_data
 )
-from .nn import merge_residues, CompleteNetwork
+from .nn import train, CompleteNetwork
 from .pssm import call_psiblast

@@ -13,13 +13,19 @@ from .preprocess import CATEGORIES
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-def merge_residues(atoms_per_residue1, atoms_per_residue2):
-    """
-    Merge the two encoded atoms per residues along the residues cross-product.
-    """
-    cross_product = product(atoms_per_residue1,
-                            atoms_per_residue2)
-    return np.array([np.concatenate(pair) for pair in cross_product])
+def train(network, x, target, n_epoch=10):
+    optimizer = torch.optim.Adam(network.parameters(), lr=0.001)
+    func_loss = torch.nn.MSELoss()
+    loss_list = []
+    for epoch in range(1, n_epoch + 1):
+        optimizer.zero_grad()
+        result = network.forward(x)
+        loss = func_loss(result, target)
+        loss.backward()
+        optimizer.step()
+        print(f"Epoch {epoch}/10 -> loss = {loss}")
+        
+    return
 
 
 class CompleteNetwork(torch.nn.Module):

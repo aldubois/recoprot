@@ -268,7 +268,7 @@ def label_data(chain1, chain2, limit=6.):
 
     Returns
     -------
-    np.ndarray of bool
+    torch.tensor of float
         For each pair of residue, indicate if the two
         residues interact with each other.
     """
@@ -277,5 +277,5 @@ def label_data(chain1, chain2, limit=6.):
     carbons2 = [atom for atom in chain2.get_atoms() if atom.get_name() == "CA"]
 
     # Compute labels
-    labels = np.array([i - j < limit for i, j in product(carbons1, carbons2)])
+    labels = torch.tensor([float(i - j < limit) for i, j in product(carbons1, carbons2)])
     return labels
