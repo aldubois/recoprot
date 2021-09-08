@@ -10,7 +10,7 @@ import torch
 from .preprocess import CATEGORIES
 
 
-DEVICE = torch.device("cuda:0" if use_cuda else "cpu")
+DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def merge_residues(atoms_per_residue1, atoms_per_residue2):
@@ -124,7 +124,6 @@ class GNN_Layer(torch.nn.Module):
         self.filters = filters
 
         self.trainable = trainable
-        use_cuda = torch.cuda.is_available()
         self.Wsv = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=DEVICE,requires_grad=True))
         self.Wdr = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=DEVICE,requires_grad=True))
         self.Wsr = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=DEVICE,requires_grad=True))
@@ -164,7 +163,6 @@ class GNN_First_Layer(torch.nn.Module):
         self.filters = filters
 
         self.trainable = trainable
-        use_cuda = torch.cuda.is_available()
         self.Wv = torch.nn.Parameter(torch.randn(len(CATEGORIES["atoms"]), self.filters, device=DEVICE, requires_grad=True))
         self.Wr = torch.nn.Parameter(torch.randn(len(CATEGORIES["residues"]), self.filters, device=DEVICE,requires_grad=True))
         self.Wsr = torch.nn.Parameter(torch.randn(len(CATEGORIES["atoms"]), self.filters, device=DEVICE, requires_grad=True))
