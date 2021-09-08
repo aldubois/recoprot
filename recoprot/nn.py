@@ -138,10 +138,10 @@ class GNN_Layer(torch.nn.Module):
         node_signals = Z @ self.Wsv
         neigh_signals_same=Z @ self.Wsr
         neigh_signals_diff=Z @ self.Wdr
-        unsqueezed_same_neigh_indicator=(same_neigh>-1).unsqueeze(2)
-        unsqueezed_diff_neigh_indicator=(diff_neigh>-1).unsqueeze(2)
-        same_neigh_features=neigh_signals_same[same_neigh]*unsqueezed_same_neigh_indicator
-        diff_neigh_features=neigh_signals_diff[diff_neigh]*unsqueezed_diff_neigh_indicator
+        unsqueezed_same_neigh_indicator = (same_neigh>-1).unsqueeze(2).to(DEVICE)
+        unsqueezed_diff_neigh_indicator = (diff_neigh>-1).unsqueeze(2).to(DEVICE)
+        same_neigh_features = neigh_signals_same[same_neigh] * unsqueezed_same_neigh_indicator
+        diff_neigh_features = neigh_signals_diff[diff_neigh] * unsqueezed_diff_neigh_indicator
         same_norm = torch.sum(same_neigh > -1, 1).unsqueeze(1).type(torch.float)
         diff_norm = torch.sum(diff_neigh > -1, 1).unsqueeze(1).type(torch.float)
 
@@ -193,8 +193,8 @@ class GNN_First_Layer(torch.nn.Module):
         neigh_same_atoms_signal=(torch.sum(same_neigh_features, axis=1))/same_norm
         neigh_diff_atoms_signal=(torch.sum(diff_neigh_features, axis=1))/diff_norm
         
-        final_res = torch.relu(node_signals+residue_signals +neigh_same_atoms_signal+neigh_diff_atoms_signal)
-        return final_res, same_neigh,diff_neigh
+        final_res = torch.relu(node_signals + residue_signals + neigh_same_atoms_signal + neigh_diff_atoms_signal)
+        return final_res, same_neigh, diff_neigh
     
 
 class GNN(torch.nn.Module):
