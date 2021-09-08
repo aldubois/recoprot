@@ -180,8 +180,8 @@ class GNN_First_Layer(torch.nn.Module):
         residue_signals = residues @ self.Wr
         neigh_signals_same=atoms @ self.Wsr
         neigh_signals_diff=atoms @ self.Wdr
-        unsqueezed_same_neigh_indicator=(same_neigh>-1).unsqueeze(2)
-        unsqueezed_diff_neigh_indicator=(diff_neigh>-1).unsqueeze(2)
+        unsqueezed_same_neigh_indicator=(same_neigh>-1).unsqueeze(2).to(DEVICE)
+        unsqueezed_diff_neigh_indicator=(diff_neigh>-1).unsqueeze(2).to(DEVICE)
         same_neigh_features=neigh_signals_same[same_neigh]*unsqueezed_same_neigh_indicator
         diff_neigh_features=neigh_signals_diff[diff_neigh]*unsqueezed_diff_neigh_indicator
         same_norm = torch.sum(same_neigh > -1, 1).unsqueeze(1).type(torch.float)
