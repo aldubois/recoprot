@@ -182,10 +182,10 @@ class GNN_First_Layer(torch.nn.Module):
         neigh_signals_diff=atoms @ self.Wdr
         unsqueezed_same_neigh_indicator=(same_neigh>-1).unsqueeze(2).to(DEVICE)
         unsqueezed_diff_neigh_indicator=(diff_neigh>-1).unsqueeze(2).to(DEVICE)
-        same_neigh_features=(neigh_signals_same[same_neigh]*unsqueezed_same_neigh_indicator).to(DEVICE)
-        diff_neigh_features=(neigh_signals_diff[diff_neigh]*unsqueezed_diff_neigh_indicator).to(DEVICE)
-        same_norm = torch.sum(same_neigh > -1, 1).unsqueeze(1).type(torch.float)
-        diff_norm = torch.sum(diff_neigh > -1, 1).unsqueeze(1).type(torch.float)
+        same_neigh_features=neigh_signals_same[same_neigh]*unsqueezed_same_neigh_indicator
+        diff_neigh_features=neigh_signals_diff[diff_neigh]*unsqueezed_diff_neigh_indicator
+        same_norm = torch.sum(same_neigh > -1, 1).unsqueeze(1).type(torch.float).to(DEVICE)
+        diff_norm = torch.sum(diff_neigh > -1, 1).unsqueeze(1).type(torch.float).to(DEVICE)
 
         # To prevent divide by zero error
         same_norm[same_norm==0]=1
