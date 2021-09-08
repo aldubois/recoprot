@@ -10,6 +10,9 @@ import torch
 from .preprocess import CATEGORIES
 
 
+DEVICE = torch.device("cuda:0" if use_cuda else "cpu")
+
+
 def merge_residues(atoms_per_residue1, atoms_per_residue2):
     """
     Merge the two encoded atoms per residues along the residues cross-product.
@@ -122,21 +125,20 @@ class GNN_Layer(torch.nn.Module):
 
         self.trainable = trainable
         use_cuda = torch.cuda.is_available()
-        device = torch.device("cuda:0" if use_cuda else "cpu")
-        self.cuda_device=device
-        self.Wsv = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=self.cuda_device,requires_grad=True))
-        self.Wdr = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=self.cuda_device,requires_grad=True))
-        self.Wsr = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=self.cuda_device,requires_grad=True))
+        self.Wsv = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=DEVICE,requires_grad=True))
+        self.Wdr = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=DEVICE,requires_grad=True))
+        self.Wsr = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=DEVICE,requires_grad=True))
         self.neighbours=10
 
     def forward(self, x):
         return self._forward_one_protein(x[0]), self._forward_one_protein(x[1])
 
     def _forward_one_protein(self, x):
-        Z,same_neigh,diff_neigh = x
-        node_signals = Z@self.Wsv
-        neigh_signals_same=Z@self.Wsr
-        neigh_signals_diff=Z@self.Wdr
+        Z, same_neigh,diff_neigh = x
+        Z.to(DEVICE)
+        node_signals = Z @ self.Wsv
+        neigh_signals_same=Z @ self.Wsr
+        neigh_signals_diff=Z @ self.Wdr
         unsqueezed_same_neigh_indicator=(same_neigh>-1).unsqueeze(2)
         unsqueezed_diff_neigh_indicator=(diff_neigh>-1).unsqueeze(2)
         same_neigh_features=neigh_signals_same[same_neigh]*unsqueezed_same_neigh_indicator
@@ -163,12 +165,10 @@ class GNN_First_Layer(torch.nn.Module):
 
         self.trainable = trainable
         use_cuda = torch.cuda.is_available()
-        device = torch.device("cuda:0" if use_cuda else "cpu")
-        self.cuda_device = device
-        self.Wv = torch.nn.Parameter(torch.randn(len(CATEGORIES["atoms"]), self.filters, device=self.cuda_device,requires_grad=True))
-        self.Wr = torch.nn.Parameter(torch.randn(len(CATEGORIES["residues"]), self.filters, device=self.cuda_device,requires_grad=True))
-        self.Wsr = torch.nn.Parameter(torch.randn(len(CATEGORIES["atoms"]), self.filters, device=self.cuda_device,requires_grad=True))
-        self.Wdr = torch.nn.Parameter(torch.randn(len(CATEGORIES["atoms"]), self.filters, device=self.cuda_device,requires_grad=True))
+        self.Wv = torch.nn.Parameter(torch.randn(len(CATEGORIES["atoms"]), self.filters, device=DEVICE, requires_grad=True))
+        self.Wr = torch.nn.Parameter(torch.randn(len(CATEGORIES["residues"]), self.filters, device=DEVICE,requires_grad=True))
+        self.Wsr = torch.nn.Parameter(torch.randn(len(CATEGORIES["atoms"]), self.filters, device=DEVICE, requires_grad=True))
+        self.Wdr = torch.nn.Parameter(torch.randn(len(CATEGORIES["atoms"]), self.filters, device=DEVICE, requires_grad=True))
         self.neighbours = n_neighbors
 
     def forward(self, x):
@@ -176,10 +176,12 @@ class GNN_First_Layer(torch.nn.Module):
         
     def _forward_one_protein(self, x):
         atoms, residues,same_neigh,diff_neigh = x
-        node_signals = atoms@self.Wv
-        residue_signals = residues@self.Wr
-        neigh_signals_same=atoms@self.Wsr
-        neigh_signals_diff=atoms@self.Wdr
+        atoms.to(DEVICE)
+        residues.to(DEVICE)
+        node_signals = atoms @ self.Wv
+        residue_signals = residues @ self.Wr
+        neigh_signals_same=atoms @ self.Wsr
+        neigh_signals_diff=atoms @ self.Wdr
         unsqueezed_same_neigh_indicator=(same_neigh>-1).unsqueeze(2)
         unsqueezed_diff_neigh_indicator=(diff_neigh>-1).unsqueeze(2)
         same_neigh_features=neigh_signals_same[same_neigh]*unsqueezed_same_neigh_indicator
