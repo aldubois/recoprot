@@ -134,7 +134,7 @@ class GNN_Layer(torch.nn.Module):
 
     def _forward_one_protein(self, x):
         Z, same_neigh,diff_neigh = x
-        Z.to(DEVICE)
+        Z = Z.to(DEVICE)
         node_signals = Z @ self.Wsv
         neigh_signals_same=Z @ self.Wsr
         neigh_signals_diff=Z @ self.Wdr
@@ -174,8 +174,8 @@ class GNN_First_Layer(torch.nn.Module):
         
     def _forward_one_protein(self, x):
         atoms, residues,same_neigh,diff_neigh = x
-        atoms.to(DEVICE)
-        residues.to(DEVICE)
+        atoms = atoms.to(DEVICE)
+        residues = residues.to(DEVICE)
         node_signals = atoms @ self.Wv
         residue_signals = residues @ self.Wr
         neigh_signals_same=atoms @ self.Wsr
