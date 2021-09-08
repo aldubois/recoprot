@@ -96,7 +96,7 @@ class NoConv(torch.nn.Module):
             
         # Instanciate each 
         self.fcs = [
-            torch.nn.Linear(in_feature, out_feature)
+            torch.nn.Linear(in_feature, out_feature, device=DEVICE)
             for in_feature, out_feature in inout_features
         ]
         return
