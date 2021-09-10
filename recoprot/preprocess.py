@@ -11,7 +11,6 @@ from itertools import product
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from Bio.PDB.NeighborSearch import NeighborSearch
-import torch
 
 # Local import
 from .reader import read_pdb_two_proteins
@@ -65,12 +64,8 @@ def preprocess_file(filename, distance=6.):
 
     Returns
     -------
-    tuple of tuple of torch.tensor
+    tuple of tuple of np.ndarray
         Input of the GNN.
-    np.array of int
-        Residue number for each atom in the protein 1.
-    np.array of int
-        Residue number for each atom in the protein 2.
     torch.tensor of float
         Target labels of the GNN.
     """
@@ -91,8 +86,8 @@ def preprocess_protein(chain):
 
     Returns
     -------
-    tuple of torch.Tensor
-        Tensors containing the atoms encoding, the residues encoding,
+    tuple of np.ndarray
+        Arrays containing the atoms encoding, the residues encoding,
         the neighbors encoding and the residue number per atom.
     """
     atoms = list(chain.get_atoms())
@@ -102,13 +97,8 @@ def preprocess_protein(chain):
     x_same_neigh, x_diff_neigh = encode_neighbors(atoms)
     residues_names = np.array([atom.get_parent().get_id()[1]
                                for atom in chain.get_atoms()])
-    x = (
-        torch.from_numpy(x_atoms.astype(np.float32)),
-        torch.from_numpy(x_residues.astype(np.float32)),
-        torch.from_numpy(x_same_neigh),
-        torch.from_numpy(x_diff_neigh),
-        residues_names
-    )
+    x = (x_atoms.astype(np.float32), x_residues.astype(np.float32),
+         x_same_neigh, x_diff_neigh, residues_names)
     return x
 
 
@@ -239,7 +229,7 @@ def label_data(chain1, chain2, limit=6.):
 
     Returns
     -------
-    torch.tensor of float
+    np.ndarray of float
         For each pair of residue, indicate if the two
         residues interact with each other.
     """
@@ -248,8 +238,8 @@ def label_data(chain1, chain2, limit=6.):
     carbons2 = [atom for atom in chain2.get_atoms() if atom.get_name() == "CA"]
 
     # Compute labels
-    labels = torch.tensor([float(i - j < limit) for i, j in product(carbons1, carbons2)])
-    return labels
+    labels = np.array([float(i - j < limit) for i, j in product(carbons1, carbons2)])
+    return labels.astype(np.float32)
 
 
 def pdb2fasta(chain):
