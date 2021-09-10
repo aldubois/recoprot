@@ -14,55 +14,54 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def train(network, x, target, n_epoch=10):
-    optimizer = torch.optim.Adam(network.parameters(), lr=0.001)
-    func_loss = torch.nn.MSELoss()
+    model = network.to(DEVICE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    func_loss = torch.nn.BCELoss()
     loss_list = []
     for epoch in range(1, n_epoch + 1):
+        result = model(x)
+        loss = func_loss(result, torch.squeeze(target).to(DEVICE))
         optimizer.zero_grad()
-        result = network.forward(x)
-        loss = func_loss(result, target)
         loss.backward()
         optimizer.step()
-        print(f"Epoch {epoch}/10 -> loss = {loss}")
+        print(f"Epoch {epoch:2d}/{n_epoch} -> loss = {loss}")
         
     return
 
 
 class CompleteNetwork(torch.nn.Module):
+
     """
     Complete neural network.
     """
 
-    def __init__(self, layers_sizes, atoms1_residue, atoms2_residue):
+    def __init__(self, layers_sizes):
         """
         Parameters
         ----------
         layers_sizes : list of integer
             Size of each fully connected layers.
-        atoms1_residue: np.ndarray of int
-            Residue ID per atom in the protein 1.
-        atoms2_residue: np.ndarray of int
-            Residue ID per atom in the protein 2.
         """
         super(CompleteNetwork, self).__init__()
         self.conv = GNN()
         self.fcs = NoConv(2*self.conv.filters[-1], layers_sizes)
-        self.atoms1_residue = atoms1_residue
-        self.atoms2_residue = atoms2_residue
         return
 
     def forward(self, x):
+        # Extract the residue number per atoms from the input
+        atoms1_residue = x[0][4]
+        atoms2_residue = x[1][4]
         # Call the convolution
         x1, x2 = self.conv.forward(x)
         # Group data and average per residue
-        residues1 = self._group_per_residue(self.atoms1_residue, x1)
-        residues2 = self._group_per_residue(self.atoms2_residue, x2)
+        residues1 = self._group_per_residue(atoms1_residue, x1)
+        residues2 = self._group_per_residue(atoms2_residue, x2)
         # Concatenate data between the two proteins along the cross product
         cross_product = product(residues1, residues2)
         x3 = torch.stack([torch.cat(pair) for pair in cross_product])
         # Call the fully connected network
         x4 = self.fcs.forward(x3)
-        return x4
+        return torch.squeeze(x4)
 
     @staticmethod
     def _group_per_residue(atoms_residue, x):
@@ -101,10 +100,10 @@ class NoConv(torch.nn.Module):
         inout_features.append([layers_sizes[-1], 1])
             
         # Instanciate each 
-        self.fcs = [
-            torch.nn.Linear(in_feature, out_feature, device=DEVICE)
-            for in_feature, out_feature in inout_features
-        ]
+        self.fcs = torch.nn.Sequential(
+            *[torch.nn.Linear(in_feature, out_feature, device=DEVICE)
+              for in_feature, out_feature in inout_features]
+        )
         return
 
 
@@ -113,11 +112,9 @@ class NoConv(torch.nn.Module):
         Apply each fully connected layers to the
         input data and call softmax on the results.
         """
-        for fc in self.fcs:
-            x = fc(x)
-        output = x
-        output = torch.nn.functional.log_softmax(x, dim=1)
-        return output
+        for fc in self.fcs[:-1]:
+            x = torch.nn.functional.relu(fc(x))
+        return torch.sigmoid(self.fcs[-1](x))
 
 
 
@@ -130,10 +127,11 @@ class GNN_Layer(torch.nn.Module):
         self.filters = filters
 
         self.trainable = trainable
-        self.Wsv = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=DEVICE,requires_grad=True))
-        self.Wdr = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=DEVICE,requires_grad=True))
-        self.Wsr = torch.nn.Parameter( torch.randn(self.v_feats, self.filters, device=DEVICE,requires_grad=True))
-        self.neighbours=10
+        self.Wsv = torch.nn.Parameter(torch.randn(self.v_feats, self.filters, device=DEVICE, requires_grad=True))
+        self.Wdr = torch.nn.Parameter(torch.randn(self.v_feats, self.filters, device=DEVICE, requires_grad=True))
+        self.Wsr = torch.nn.Parameter(torch.randn(self.v_feats, self.filters, device=DEVICE, requires_grad=True))
+        self.neighbours = 10
+        return
 
     def forward(self, x):
         return self._forward_one_protein(x[0]), self._forward_one_protein(x[1])
@@ -158,7 +156,7 @@ class GNN_Layer(torch.nn.Module):
         neigh_diff_atoms_signal = (torch.sum(diff_neigh_features, axis=1))/diff_norm
         final_res = torch.relu(node_signals +neigh_same_atoms_signal+neigh_diff_atoms_signal)
 
-        return final_res,same_neigh,diff_neigh
+        return final_res, same_neigh, diff_neigh
 
 
 class GNN_First_Layer(torch.nn.Module):
@@ -179,7 +177,7 @@ class GNN_First_Layer(torch.nn.Module):
         return self._forward_one_protein(x[0]), self._forward_one_protein(x[1])
         
     def _forward_one_protein(self, x):
-        atoms, residues,same_neigh,diff_neigh = x
+        atoms, residues, same_neigh, diff_neigh, _ = x
         atoms = atoms.to(DEVICE)
         residues = residues.to(DEVICE)
         node_signals = atoms @ self.Wv
@@ -194,10 +192,10 @@ class GNN_First_Layer(torch.nn.Module):
         diff_norm = torch.sum(diff_neigh > -1, 1).unsqueeze(1).type(torch.float).to(DEVICE)
 
         # To prevent divide by zero error
-        same_norm[same_norm==0]=1
-        diff_norm[diff_norm==0]=1        
-        neigh_same_atoms_signal=(torch.sum(same_neigh_features, axis=1))/same_norm
-        neigh_diff_atoms_signal=(torch.sum(diff_neigh_features, axis=1))/diff_norm
+        same_norm[same_norm==0] = 1
+        diff_norm[diff_norm==0] = 1        
+        neigh_same_atoms_signal = (torch.sum(same_neigh_features, axis=1)) / same_norm
+        neigh_diff_atoms_signal = (torch.sum(diff_neigh_features, axis=1)) / diff_norm
         
         final_res = torch.relu(node_signals + residue_signals + neigh_same_atoms_signal + neigh_diff_atoms_signal)
         return final_res, same_neigh, diff_neigh
@@ -208,13 +206,14 @@ class GNN(torch.nn.Module):
     def __init__(self, first_layer_filters=128, other_layers_filters=[256, 512]):
         super(GNN, self).__init__()
         self.filters = [first_layer_filters, *other_layers_filters]
-        self.convs = [GNN_First_Layer(filters=first_layer_filters)]
+        convs = [GNN_First_Layer(filters=first_layer_filters)]
         if other_layers_filters:
             inout_features = [(first_layer_filters, other_layers_filters[0])]
             for inout_feature in zip(other_layers_filters[:-1], other_layers_filters[1:]):
                 inout_features.append(inout_feature)
             for v_feats, filters in inout_features:
-                self.convs.append(GNN_Layer(v_feats=v_feats, filters=filters))
+                convs.append(GNN_Layer(v_feats=v_feats, filters=filters))
+            self.convs = torch.nn.Sequential(*convs)
         return
     
     def forward(self, x):

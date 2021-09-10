@@ -11,7 +11,15 @@ import recoprot
 
 def test_complete_network():
 
-    x, residues1, residues2, _ = recoprot.preprocess_file("tests/data/model.000.00.pdb")
-    nn = recoprot.CompleteNetwork([128, 256], residues1, residues2)
+    x, _ = recoprot.preprocess_file("tests/data/model.000.00.pdb")
+    nn = recoprot.CompleteNetwork([128, 256])
     res = nn.forward(x)
+    return
+
+
+def test_train():
+    x, labels = recoprot.preprocess_file("tests/data/model.000.00.pdb", 18)
+    nn = recoprot.CompleteNetwork([128, 256])
+    recoprot.train(nn, x, labels, 50)
+    assert(0)
     return

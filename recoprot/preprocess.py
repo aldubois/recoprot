@@ -68,7 +68,7 @@ def pdb2fasta(chain):
                    for residu in chain.get_residues())
 
 
-def preprocess_file(filename):
+def preprocess_file(filename, distance=6.):
     """
     Do the full preprocessing of a file containing 2 proteins.
 
@@ -94,13 +94,9 @@ def preprocess_file(filename):
         Target labels of the GNN.
     """
     chain1, chain2 = read_pdb_two_proteins(filename)
-    residues1 = np.array([atom.get_parent().get_id()[1]
-                          for atom in chain1.get_atoms()])
-    residues2 = np.array([atom.get_parent().get_id()[1]
-                          for atom in chain2.get_atoms()])
     x = (preprocess_protein(chain1), preprocess_protein(chain2))
-    target = label_data(chain1, chain2)
-    return x, residues1, residues2, target
+    target = label_data(chain1, chain2, distance)
+    return x, target
 
 
 def preprocess_protein(chain):
@@ -115,52 +111,24 @@ def preprocess_protein(chain):
     Returns
     -------
     tuple of torch.Tensor
-        Tensors containing the atoms encoding, the residues encoding
-        and the neighbors encoding.
+        Tensors containing the atoms encoding, the residues encoding,
+        the neighbors encoding and the residue number per atom.
     """
     atoms = list(chain.get_atoms())
     residues = [atom.get_parent().get_resname() for atom in atoms]
     x_atoms = encode_protein_atoms(atoms).toarray()
     x_residues = encode_protein_residues(residues).toarray()
     x_same_neigh, x_diff_neigh = encode_neighbors(atoms)
+    residues_names = np.array([atom.get_parent().get_id()[1]
+                               for atom in chain.get_atoms()])
     x = (
         torch.from_numpy(x_atoms.astype(np.float32)),
         torch.from_numpy(x_residues.astype(np.float32)),
         torch.from_numpy(x_same_neigh),
-        torch.from_numpy(x_diff_neigh)
+        torch.from_numpy(x_diff_neigh),
+        residues_names
     )
     return x
-
-
-def preprocess_2_proteins_atoms(chain1, chain2):
-    """
-    Preprocess the 2 proteins chain to the format of the merge operation.
-
-    For each residue, we encode each of its atoms and then take the average.
-
-    Parameters
-    ----------
-    chain1: Bio.PDB.Chain.Chain
-        Ligand protein's chain.
-    chain2: Bio.PDB.Chain.Chain
-        Receptor protein's chain.
-
-    Returns
-    -------
-    list of np.ndarray
-        For each residue in the protein chain 1,
-        the average of each encoded atoms in this residue.
-    list of np.ndarray
-        For each residue in the protein chain 2,
-        the average of each encoded atoms in this residue.
-    """
-    residues1 = chain1.get_residues()
-    residues2 = chain2.get_residues()
-    encoded_atoms1 = [encode_protein_atoms([atom.get_name() for atom in res.get_atoms()]).toarray() for res in residues1]
-    encoded_atoms2 = [encode_protein_atoms([atom.get_name() for atom in res.get_atoms()]).toarray() for res in residues2]
-    mean_per_residue1 = [atoms.mean(axis=0) for atoms in encoded_atoms1]
-    mean_per_residue2 = [atoms.mean(axis=0) for atoms in encoded_atoms2]
-    return mean_per_residue1, mean_per_residue2
 
 
 def encode_protein_atoms(atoms):
