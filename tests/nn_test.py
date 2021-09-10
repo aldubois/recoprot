@@ -20,6 +20,6 @@ def test_complete_network():
 def test_train():
     x, labels = recoprot.preprocess_file("tests/data/model.000.00.pdb", 18)
     nn = recoprot.CompleteNetwork([128, 256])
-    recoprot.train(nn, x, labels, 50)
-    assert(0)
+    losses = recoprot.train(nn, x, labels, 2)
+    assert losses[0] != losses[1]
     return

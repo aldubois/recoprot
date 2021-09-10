@@ -4,3 +4,4 @@ biopython
 biopandas
 sklearn
 torch
+lmdb

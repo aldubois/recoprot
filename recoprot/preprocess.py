@@ -49,25 +49,6 @@ RESIDUES_TABLE = {
 }
 
 
-def pdb2fasta(chain):
-    """
-    Generate a FASTA sequence from the atom structure.
-
-    Parameters
-    ----------
-    chain: Bio.PDB.Chain.Chain
-        Protein's chain.
-
-    Returns
-    -------
-    str
-        FASTA sequence.
-    """
-    # Table extracted from https://cupnet.net/pdb2fasta/
-    return "".join(RESIDUES_TABLE[residu.get_resname()]
-                   for residu in chain.get_residues())
-
-
 def preprocess_file(filename, distance=6.):
     """
     Do the full preprocessing of a file containing 2 proteins.
@@ -269,3 +250,24 @@ def label_data(chain1, chain2, limit=6.):
     # Compute labels
     labels = torch.tensor([float(i - j < limit) for i, j in product(carbons1, carbons2)])
     return labels
+
+
+def pdb2fasta(chain):
+    """
+    Generate a FASTA sequence from the atom structure.
+
+    Parameters
+    ----------
+    chain: Bio.PDB.Chain.Chain
+        Protein's chain.
+
+    Returns
+    -------
+    str
+        FASTA sequence.
+    """
+    # Table extracted from https://cupnet.net/pdb2fasta/
+    return "".join(RESIDUES_TABLE[residu.get_resname()]
+                   for residu in chain.get_residues())
+
+

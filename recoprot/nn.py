@@ -17,7 +17,7 @@ def train(network, x, target, n_epoch=10):
     model = network.to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     func_loss = torch.nn.BCELoss()
-    loss_list = []
+    losses = []
     for epoch in range(1, n_epoch + 1):
         result = model(x)
         loss = func_loss(result, torch.squeeze(target).to(DEVICE))
@@ -25,8 +25,9 @@ def train(network, x, target, n_epoch=10):
         loss.backward()
         optimizer.step()
         print(f"Epoch {epoch:2d}/{n_epoch} -> loss = {loss}")
+        losses.append(loss)
         
-    return
+    return losses
 
 
 class CompleteNetwork(torch.nn.Module):
