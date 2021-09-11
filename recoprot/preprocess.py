@@ -6,22 +6,46 @@ Data preprocessor.
 
 # Standard Library
 from itertools import product
+import warnings
+
 
 # External Dependencies
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from Bio.PDB.NeighborSearch import NeighborSearch
+from Bio.PDB.PDBParser import PDBParser
 
-# Local import
-from .reader import read_pdb_two_proteins
+
+SEP = "."
+LIGAND = "ligand"
+RECEPTOR = "receptor"
+ENC_ATOMS = "encoded_atoms"
+ENC_RESIDUES = "encoded_residues"
+NEIGHBORS_IN = "neighbors_in"
+NEIGHBORS_OUT = "neighbors_out"
+ATOMS = "atoms"
+RESIDUES = "residues"
+LABELS = "labels"
+
+L_ENC_ATOMS = SEP.join([LIGAND, ENC_ATOMS])
+L_ENC_RESIDUES = SEP.join([LIGAND, ENC_RESIDUES])
+L_NEIGHBORS_IN = SEP.join([LIGAND, NEIGHBORS_IN])
+L_NEIGHBORS_OUT = SEP.join([LIGAND, NEIGHBORS_OUT])
+L_RESIDUES = SEP.join([LIGAND, RESIDUES])
+
+R_ENC_ATOMS = SEP.join([RECEPTOR, ENC_ATOMS])
+R_ENC_RESIDUES = SEP.join([RECEPTOR, ENC_RESIDUES])
+R_NEIGHBORS_IN = SEP.join([RECEPTOR, NEIGHBORS_IN])
+R_NEIGHBORS_OUT = SEP.join([RECEPTOR, NEIGHBORS_OUT])
+R_RESIDUES = SEP.join([RECEPTOR, RESIDUES])
 
 
 CATEGORIES = {
-    "atoms": ['1', 'C', 'CA', 'CB', 'CG', 'CH2', 'N',
-              'NH2', 'O1', 'O2', 'OG','OH', 'SE'],
-    "residues": ['1', 'ALA', 'ARG', 'ASN', 'ASP', 'CYS', 'GLN',
-                 'GLU', 'GLY', 'HIS', 'ILE', 'LEU', 'LYS', 'MET',
-                 'PHE', 'PRO', 'SER', 'THR', 'TRP', 'TYR', 'VAL']
+    ATOMS: ['1', 'C', 'CA', 'CB', 'CG', 'CH2', 'N',
+            'NH2', 'O1', 'O2', 'OG','OH', 'SE'],
+    RESIDUES: ['1', 'ALA', 'ARG', 'ASN', 'ASP', 'CYS', 'GLN',
+               'GLU', 'GLY', 'HIS', 'ILE', 'LEU', 'LYS', 'MET',
+               'PHE', 'PRO', 'SER', 'THR', 'TRP', 'TYR', 'VAL']
 }
 
 RESIDUES_TABLE = {
@@ -48,10 +72,81 @@ RESIDUES_TABLE = {
 }
 
 
-def preprocess_file(filename, distance=6.):
+def preprocess_file_and_write_data(filename, txn, idx=0, distance=6.):
     """
     Do the full preprocessing of a file containing 2 proteins.
 
+    The data input of the GNN is generated from the file, the residue
+    number per atom for both proteins as well as the data label, that
+    will be used as the target of the network. Write this data to a
+    LMDB file.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the PDB file to preprocess (containing 2 proteins).
+    txn : lmdb.Transaction
+        LMDB transaction to write in.
+    idx : int
+        Index of the PDB file (ex: you are writing 10 PDB file in the
+        environment and you are currently writing the idx'th one).
+    distance : float
+        Distance max for two residues to interact.
+    """
+    x, labels = preprocess_file(filename, distance)
+    prefix = f"{idx}"
+    # Put ligand protein in file
+    txn.put(SEP.join([prefix, L_ENC_ATOMS]).encode(),
+            x[0][0].tobytes())
+    txn.put(SEP.join([prefix, L_ENC_RESIDUES]).encode(),
+            x[0][1].tobytes())
+    txn.put(SEP.join([prefix, L_NEIGHBORS_IN]).encode(),
+            x[0][2].tobytes())
+    txn.put(SEP.join([prefix, L_NEIGHBORS_OUT]).encode(),
+            x[0][3].tobytes())
+    txn.put(SEP.join([prefix, L_RESIDUES]).encode(),
+            x[0][4].tobytes())
+    # Put receptor protein in file
+    txn.put(SEP.join([prefix, R_ENC_ATOMS]).encode(),
+            x[1][0].tobytes())
+    txn.put(SEP.join([prefix, R_ENC_RESIDUES]).encode(),
+            x[1][1].tobytes())
+    txn.put(SEP.join([prefix, R_NEIGHBORS_IN]).encode(),
+            x[1][2].tobytes())
+    txn.put(SEP.join([prefix, R_NEIGHBORS_OUT]).encode(),
+            x[1][3].tobytes())
+    txn.put(SEP.join([prefix, R_RESIDUES]).encode(),
+            x[1][4].tobytes())
+    # Put labels in file
+    txn.put(SEP.join([prefix, LABELS]).encode(), labels.tobytes())
+    return
+    
+
+def read_pdb(filename):
+    """
+    Read a PDB file and output a biopython PDBParser object.
+
+    Parameters
+    ----------
+    filename: str
+        Path to PDB file.
+
+    Returns
+    -------
+    Tuple of two Bio.PDB.Chain.Chain
+        The two proteins' chains.
+    """
+    parser = PDBParser()
+    with warnings.catch_warnings(record=True) as w:
+        structure = parser.get_structure("", filename)
+    chains = list(structure.get_chains())
+    return chains[0], chains[1]
+
+
+def preprocess_file(filename, distance=6.):
+    """
+    Do the full preprocessing of a file containing 2 proteins.
+    
     The data input of the GNN is generated from the file, the residue
     number per atom for both proteins as well as the data label, that
     will be used as the target of the network.
@@ -60,7 +155,8 @@ def preprocess_file(filename, distance=6.):
     ----------
     filename : str
         Path to the PDB file to preprocess (containing 2 proteins).
-
+    distance : float
+        Distance max for two residues to interact.
 
     Returns
     -------
@@ -69,7 +165,7 @@ def preprocess_file(filename, distance=6.):
     torch.tensor of float
         Target labels of the GNN.
     """
-    chain1, chain2 = read_pdb_two_proteins(filename)
+    chain1, chain2 = read_pdb(filename)
     x = (preprocess_protein(chain1), preprocess_protein(chain2))
     target = label_data(chain1, chain2, distance)
     return x, target
@@ -117,7 +213,7 @@ def encode_protein_atoms(atoms):
         Encoded atoms chain in a Compressed Sparse Row format.
     """
     encoder = OneHotEncoder(handle_unknown='ignore')
-    categories = np.array(CATEGORIES["atoms"]).reshape(-1, 1)
+    categories = np.array(CATEGORIES[ATOMS]).reshape(-1, 1)
     encoder.fit(categories)
     categorized_atoms = np.array([atom if atom in categories else '1'
                                   for atom in atoms])
@@ -140,7 +236,7 @@ def encode_protein_residues(residues):
         Encoded atoms chain in a Compressed Sparse Row format.
     """
     encoder = OneHotEncoder(handle_unknown='ignore')
-    categories = np.array(CATEGORIES["residues"]).reshape(-1, 1)
+    categories = np.array(CATEGORIES[RESIDUES]).reshape(-1, 1)
     encoder.fit(categories)
     categorized_residues = np.array([residue if residue in categories else '1'
                                      for residue in residues])
