@@ -10,7 +10,7 @@ import torch
 import lmdb
 import recoprot
 
-DATA_FILE = "tests/data/model.000.00.pdb"
+DATA_FILE = "tests/data/same_file/model.000.00.pdb"
 
 
 def test_complete_network():
@@ -33,7 +33,7 @@ def test_complete_network():
 
 
 def test_train():
-    x, labels = recoprot.preprocess_file(DATA_FILE, 18)
+    x, labels = recoprot.preprocess_file(DATA_FILE, distance=18)
     x = ((torch.from_numpy(x[0][0]),
           torch.from_numpy(x[0][1]),
           torch.from_numpy(x[0][2]),
@@ -54,7 +54,7 @@ def test_train():
 
 def test_read_write_data():
 
-    x_ref, labels_ref = recoprot.preprocess_file(DATA_FILE, 18)
+    x_ref, labels_ref = recoprot.preprocess_file(DATA_FILE, distance=18)
 
     envw = lmdb.open('/tmp/test', max_dbs=2)
     with envw.begin(write=True) as txn:

@@ -20,5 +20,10 @@ setup(
     author_email='alexandre.dubois@colostate.edu',
     url='https://github.com/aldubois/recoprot',
     license=license,
-    packages=find_packages(exclude=('tests', 'docs', 'env'))
+    packages=find_packages(exclude=('tests', 'docs', 'env')),
+    entry_points={
+        'console_scripts': [
+            'preprocess = recoprot:preprocess_main',
+        ],
+    }
 )

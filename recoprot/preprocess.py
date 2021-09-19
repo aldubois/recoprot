@@ -5,15 +5,18 @@ Data preprocessor.
 """
 
 # Standard Library
+import os
+import glob
 from itertools import product
 import warnings
-
+import argparse
 
 # External Dependencies
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
 from Bio.PDB.NeighborSearch import NeighborSearch
 from Bio.PDB.PDBParser import PDBParser
+import lmdb
 
 
 SEP = "."
@@ -26,6 +29,9 @@ NEIGHBORS_OUT = "neighbors_out"
 ATOMS = "atoms"
 RESIDUES = "residues"
 LABELS = "labels"
+
+SAME_FILE = "*.pdb"
+DIFF_FILE = "*_l_u.pdb"
 
 L_ENC_ATOMS = SEP.join([LIGAND, ENC_ATOMS])
 L_ENC_RESIDUES = SEP.join([LIGAND, ENC_RESIDUES])
@@ -72,7 +78,74 @@ RESIDUES_TABLE = {
 }
 
 
-def preprocess_file_and_write_data(filename, txn, idx=0, distance=6.):
+def preprocess_main():
+    options = parse_args()
+
+    envw = lmdb.open(options.out)
+
+    if options.same_file:
+        ftype = os.path.join(options.inp, SAME_FILE)
+        for i, fname in enumerate(glob.glob(ftype)):
+            with envw.begin(write=True) as txn:
+                preprocess_file_and_write_data(fname, txn, idx=i)
+
+    else:
+        file_type = os.path.join(options.inp, "*_l_u.pdb")
+        prot_names = [
+            os.path.basename(fname).split("_")[0]
+            for fname in glob.glob(file_type)
+        ]
+        struct_type = ["b", "u"]
+        for i, (pname, struct) in enumerate(product(prot_names, struct_type)):
+            fname1 = os.path.join(options.inp, f"{pname}_l_{struct}.pdb")
+            fname2 = os.path.join(options.inp, f"{pname}_r_{struct}.pdb")
+            with envw.begin(write=True) as txn:
+                preprocess_file_and_write_data(fname1, txn, filename2=fname2, idx=i)
+
+    envw.close()
+    return
+
+
+class Options:
+
+    def __init__(self, inp, out, same_file):
+        self.inp = inp
+        self.out = out
+        self.same_file = same_file
+        return
+
+    def __repr__(self):
+        return (f"Options(inp={self.inp}, out={self.out},"
+                f" same_file={self.same_file})")
+    
+
+def parse_args():
+    """
+    Parse arguments.
+    """
+
+    parser = argparse.ArgumentParser(description='Process PDB files.')
+ 
+    # Mandatory arguments
+    parser.add_argument("-d", "--input-dir", dest='inp',
+                        required=True, metavar='DIR',
+                        type=lambda x: _is_dir(parser, x),
+                        help='Data output directory')
+
+    parser.add_argument("-o", "--output-dir", dest='out',
+                        required=True, metavar='DIR',
+                        type=lambda x: _build_dir(parser, x),
+                        help='Data output directory')
+
+    # Optional arguments
+    parser.add_argument("--same-file", dest="same_file",
+                        action="store_true", default=False)
+
+    args = parser.parse_args()
+    return Options(args.inp, args.out, args.same_file)
+
+
+def preprocess_file_and_write_data(filename, txn, filename2=None, idx=0, distance=6.):
     """
     Do the full preprocessing of a file containing 2 proteins.
 
@@ -93,7 +166,13 @@ def preprocess_file_and_write_data(filename, txn, idx=0, distance=6.):
     distance : float
         Distance max for two residues to interact.
     """
-    x, labels = preprocess_file(filename, distance)
+    x, labels = (
+        preprocess_file(filename, distance=distance)
+        if filename2 is None else
+        preprocess_file(filename,
+                        filename2=filename2,
+                        distance=distance)
+    )
     prefix = f"{idx}"
     # Put ligand protein in file
     txn.put(SEP.join([prefix, L_ENC_ATOMS]).encode(),
@@ -122,7 +201,7 @@ def preprocess_file_and_write_data(filename, txn, idx=0, distance=6.):
     return
     
 
-def read_pdb(filename):
+def read_pdb_2prot_same_file(filename):
     """
     Read a PDB file and output a biopython PDBParser object.
 
@@ -143,7 +222,33 @@ def read_pdb(filename):
     return chains[0], chains[1]
 
 
-def preprocess_file(filename, distance=6.):
+def read_pdb_2prot_different_files(filename1, filename2):
+    """
+    Read a PDB file and output a biopython PDBParser object.
+
+    Parameters
+    ----------
+    filename1: str
+        Path to PDB file for the ligand protein.
+    filename2: str
+        Path to PDB file for the receptor protein.
+
+    Returns
+    -------
+    Tuple of two Bio.PDB.Chain.Chain
+        The two proteins' chains.
+    """
+    parser1, parser2 = PDBParser(), PDBParser()
+    with warnings.catch_warnings(record=True) as w:
+        structure1 = parser1.get_structure("", filename1)
+    chains1 = next(structure1.get_chains())
+    with warnings.catch_warnings(record=True) as w:
+        structure2 = parser2.get_structure("", filename2)
+    chains2 = next(structure2.get_chains())
+    return chains1, chains2
+
+
+def preprocess_file(filename, filename2=None, distance=6.):
     """
     Do the full preprocessing of a file containing 2 proteins.
     
@@ -165,7 +270,10 @@ def preprocess_file(filename, distance=6.):
     torch.tensor of float
         Target labels of the GNN.
     """
-    chain1, chain2 = read_pdb(filename)
+    chain1, chain2 = (
+        read_pdb_2prot_same_file(filename) if filename2 is None
+        else read_pdb_2prot_different_files(filename, filename2)
+    )
     x = (preprocess_protein(chain1), preprocess_protein(chain2))
     target = label_data(chain1, chain2, distance)
     return x, target
@@ -357,3 +465,15 @@ def pdb2fasta(chain):
                    for residu in chain.get_residues())
 
 
+def _is_dir(parser, arg):
+    if not os.path.isdir(arg):
+        parser.error("The input directory %s does not exist!" % arg)
+    else:
+        return arg
+
+def _build_dir(parser, arg):
+    if os.path.isdir(arg):
+        parser.error("The output directory already exist!" % arg)
+    else:
+        os.makedirs(arg)
+        return arg

@@ -15,12 +15,12 @@ from .context import recoprot
 THIS_DIR = os.path.dirname(__file__)
 
 
-def test_reader():
+def test_reader_same_file():
     """
     Verify PDB reading file.
     """
-    fname = os.path.join(THIS_DIR, "data", "model.000.00.pdb")
-    chain1, chain2 = recoprot.read_pdb(fname)
+    fname = os.path.join(THIS_DIR, "data", "same_file", "model.000.00.pdb")
+    chain1, chain2 = recoprot.read_pdb_2prot_same_file(fname)
     atom1 = next(chain1.get_atoms())
     atom2 = next(chain2.get_atoms())
     assert str(atom1.get_vector()) == "<Vector 9.74, 68.48, 8.62>"
@@ -28,12 +28,27 @@ def test_reader():
     return    
 
 
+def test_reader_diff_file():
+    """
+    Verify PDB reading file.
+    """
+    bdir = os.path.join(THIS_DIR, "data", "diff_file")
+    fname1 = os.path.join(bdir, "1A2K_l_b.pdb")
+    fname2 = os.path.join(bdir, "1A2K_r_b.pdb")
+    chain1, chain2 = recoprot.read_pdb_2prot_different_files(fname1, fname2)
+    atom1 = next(chain1.get_atoms())
+    atom2 = next(chain2.get_atoms())
+    assert str(atom1.get_vector()) == "<Vector 69.13, 20.06, 76.59>"
+    assert str(atom2.get_vector()) == "<Vector 28.19, 5.02, 62.68>"
+    return    
+
+
 def test_pdb2fasta():
     """
     Verify function generating the fasta residue list on the first 10 residues.
     """
-    fname = os.path.join(THIS_DIR, "data", "model.000.00.pdb")
-    _, chain = recoprot.read_pdb(fname)
+    fname = os.path.join(THIS_DIR, "data", "same_file", "model.000.00.pdb")
+    _, chain = recoprot.read_pdb_2prot_same_file(fname)
     calc = recoprot.pdb2fasta(chain)[:10]
     ref = "MELKNSISDY"
     assert ref == calc
@@ -86,8 +101,8 @@ def test_encode_neighbors():
 
     This function result is compared to the result given by Soumyadip's original function.
     """    
-    fname = os.path.join(THIS_DIR, "data", "model.000.00.pdb")
-    chain, _ = recoprot.read_pdb(fname)
+    fname = os.path.join(THIS_DIR, "data", "same_file", "model.000.00.pdb")
+    chain, _ = recoprot.read_pdb_2prot_same_file(fname)
     atoms = list(chain.get_atoms())
     calc_in, calc_out = recoprot.encode_neighbors(atoms)
     ref_in, ref_out = ref_neigh1(np.array(atoms))
@@ -99,8 +114,8 @@ def test_encode_neighbors():
 def test_label_data():
     """
     """
-    fname = os.path.join(THIS_DIR, "data", "model.000.00.pdb")
-    chain1, chain2 = recoprot.read_pdb(fname)
+    fname = os.path.join(THIS_DIR, "data", "same_file", "model.000.00.pdb")
+    chain1, chain2 = recoprot.read_pdb_2prot_same_file(fname)
     labels = recoprot.label_data(chain1, chain2)
     # Computed manually distances on a few cases
     assert labels[0] == False
