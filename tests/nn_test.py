@@ -58,7 +58,7 @@ def test_read_write_data():
 
     envw = lmdb.open('/tmp/test', max_dbs=2)
     with envw.begin(write=True) as txn:
-        recoprot.preprocess_file_and_write_data(DATA_FILE, txn, 0, 18)
+        recoprot.preprocess_file_and_write_data(DATA_FILE, txn, idx=0, distance=18)
     envw.close()
 
     envr = lmdb.open('/tmp/test')
