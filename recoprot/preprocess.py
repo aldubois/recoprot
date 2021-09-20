@@ -81,7 +81,7 @@ RESIDUES_TABLE = {
 def preprocess_main():
     options = parse_args()
 
-    envw = lmdb.open(options.out, map_size=10e10)
+    envw = lmdb.open(options.out, map_size=options.db_size)
 
     if options.same_file:
         ftype = os.path.join(options.inp, SAME_FILE)
@@ -112,15 +112,17 @@ def preprocess_main():
 
 class Options:
 
-    def __init__(self, inp, out, same_file):
+    def __init__(self, inp, out, same_file, db_size):
         self.inp = inp
         self.out = out
         self.same_file = same_file
+        self.db_size = db_size
         return
 
     def __repr__(self):
         return (f"Options(inp={self.inp}, out={self.out},"
-                f" same_file={self.same_file})")
+                f" same_file={self.same_file},"
+                f" db_size={self.db_size})")
     
 
 def parse_args():
@@ -145,8 +147,13 @@ def parse_args():
     parser.add_argument("--same-file", dest="same_file",
                         action="store_true", default=False)
 
+    # Optional arguments
+    parser.add_argument("-n", "--db-size", dest="db_size",
+                        type=int, default=None,
+                        help="Size of the LMDB in Bytes")
+
     args = parser.parse_args()
-    return Options(args.inp, args.out, args.same_file)
+    return Options(args.inp, args.out, args.same_file, args.db_size)
 
 
 def preprocess_file_and_write_data(filename, txn, filename2=None, idx=0, distance=6.):
