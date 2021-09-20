@@ -40,3 +40,14 @@ make test
 ```bash
 python3 setup.py install
 ```
+
+
+## Using the package
+
+### Preprocess the data
+
+To preprocess the the data, call:
+
+```bash
+preprocess -i /path/to/dbd/pdbfiles -o /path/for/output/lmdb/database
+```
