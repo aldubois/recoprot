@@ -81,11 +81,13 @@ RESIDUES_TABLE = {
 def preprocess_main():
     options = parse_args()
 
-    envw = lmdb.open(options.out)
+    envw = lmdb.open(options.out, map_size=10e10)
 
     if options.same_file:
         ftype = os.path.join(options.inp, SAME_FILE)
-        for i, fname in enumerate(glob.glob(ftype)):
+        files = glob.glob(ftype)
+        for i, fname in enumerate(files):
+            print(f"{i+1}/{len(files)} : Preprocessing file {os.path.basename(fname)}.")
             with envw.begin(write=True) as txn:
                 preprocess_file_and_write_data(fname, txn, idx=i)
 
@@ -96,9 +98,11 @@ def preprocess_main():
             for fname in glob.glob(file_type)
         ]
         struct_type = ["b", "u"]
-        for i, (pname, struct) in enumerate(product(prot_names, struct_type)):
+        files = list(product(prot_names, struct_type))
+        for i, (pname, struct) in enumerate(files):
             fname1 = os.path.join(options.inp, f"{pname}_l_{struct}.pdb")
             fname2 = os.path.join(options.inp, f"{pname}_r_{struct}.pdb")
+            print(f"{i+1}/{len(files)} : Preprocessing files {os.path.basename(fname1)} and {os.path.basename(fname2)}.")
             with envw.begin(write=True) as txn:
                 preprocess_file_and_write_data(fname1, txn, filename2=fname2, idx=i)
 
@@ -127,7 +131,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Process PDB files.')
  
     # Mandatory arguments
-    parser.add_argument("-d", "--input-dir", dest='inp',
+    parser.add_argument("-i", "--input-dir", dest='inp',
                         required=True, metavar='DIR',
                         type=lambda x: _is_dir(parser, x),
                         help='Data output directory')
