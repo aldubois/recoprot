@@ -49,5 +49,8 @@ python3 setup.py install
 To preprocess the the data, call:
 
 ```bash
-preprocess -i /path/to/dbd/pdbfiles -o /path/for/output/lmdb/database
+export DB_SIZE=1000000000
+preprocess -i /path/to/dbd/pdbfiles -o /path/for/output/lmdb/database -n ${DB_SIZE}
 ```
+
+With *N* the memory size of the LMDB database that will be created.
