@@ -29,6 +29,7 @@ NEIGHBORS_OUT = "neighbors_out"
 ATOMS = "atoms"
 RESIDUES = "residues"
 LABELS = "labels"
+N_PROTEINS = "n_proteins"
 
 SAME_FILE = "*.pdb"
 DIFF_FILE = "*_l_u.pdb"
@@ -86,9 +87,10 @@ def preprocess_main():
     if options.same_file:
         ftype = os.path.join(options.inp, SAME_FILE)
         files = glob.glob(ftype)
-        for i, fname in enumerate(files):
-            print(f"{i+1}/{len(files)} : Preprocessing file {os.path.basename(fname)}.")
-            with envw.begin(write=True) as txn:
+        with envw.begin(write=True) as txn:
+            txn.put(N_PROTEINS.encode(), str(len(files)).encode())
+            for i, fname in enumerate(files):
+                print(f"{i+1}/{len(files)} : Preprocessing file {os.path.basename(fname)}.")
                 preprocess_file_and_write_data(fname, txn, idx=i)
 
     else:
@@ -99,11 +101,12 @@ def preprocess_main():
         ]
         struct_type = ["b", "u"]
         files = list(product(prot_names, struct_type))
-        for i, (pname, struct) in enumerate(files):
-            fname1 = os.path.join(options.inp, f"{pname}_l_{struct}.pdb")
-            fname2 = os.path.join(options.inp, f"{pname}_r_{struct}.pdb")
-            print(f"{i+1}/{len(files)} : Preprocessing files {os.path.basename(fname1)} and {os.path.basename(fname2)}.")
-            with envw.begin(write=True) as txn:
+        with envw.begin(write=True) as txn:
+            txn.put(N_PROTEINS.encode(), str(len(files)).encode())
+            for i, (pname, struct) in enumerate(files):
+                fname1 = os.path.join(options.inp, f"{pname}_l_{struct}.pdb")
+                fname2 = os.path.join(options.inp, f"{pname}_r_{struct}.pdb")
+                print(f"{i+1}/{len(files)} : Preprocessing files {os.path.basename(fname1)} and {os.path.basename(fname2)}.")
                 preprocess_file_and_write_data(fname1, txn, filename2=fname2, idx=i)
 
     envw.close()
