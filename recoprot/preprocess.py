@@ -167,7 +167,10 @@ def parse_args():
 
 
     # Optional arguments
-    parser.add_argument("--info", dest="log", action="store_true", default=False)
+    parser.add_argument("--info", dest="log",
+                        action="store_true",
+                        default=False,
+                        help="Display information messages")
     
     args = parser.parse_args()
 
