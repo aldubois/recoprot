@@ -10,6 +10,7 @@ import glob
 from itertools import product
 import warnings
 import argparse
+import logging
 
 # External Dependencies
 import numpy as np
@@ -17,6 +18,7 @@ from sklearn.preprocessing import OneHotEncoder
 from Bio.PDB.NeighborSearch import NeighborSearch
 from Bio.PDB.PDBParser import PDBParser
 import lmdb
+import torch
 
 
 SEP = "."
@@ -81,7 +83,11 @@ RESIDUES_TABLE = {
 
 def preprocess_main():
     options = parse_args()
+    preprocess(options)
+    return
 
+
+def preprocess(options):
     envw = lmdb.open(options.out, map_size=options.db_size)
 
     if options.same_file:
@@ -90,7 +96,8 @@ def preprocess_main():
         with envw.begin(write=True) as txn:
             txn.put(N_PROTEINS.encode(), str(len(files)).encode())
             for i, fname in enumerate(files):
-                print(f"{i+1}/{len(files)} : Preprocessing file {os.path.basename(fname)}.")
+                logging.info(f"{i+1}/{len(files)} : Preprocessing "
+                             f"file {os.path.basename(fname)}.")
                 preprocess_file_and_write_data(fname, txn, idx=i)
 
     else:
@@ -106,12 +113,15 @@ def preprocess_main():
             for i, (pname, struct) in enumerate(files):
                 fname1 = os.path.join(options.inp, f"{pname}_l_{struct}.pdb")
                 fname2 = os.path.join(options.inp, f"{pname}_r_{struct}.pdb")
-                print(f"{i+1}/{len(files)} : Preprocessing files {os.path.basename(fname1)} and {os.path.basename(fname2)}.")
+                logging.info(
+                    f"{i+1}/{len(files)} : Preprocessing files "
+                    f"{os.path.basename(fname1)} and "
+                    f"{os.path.basename(fname2)}."
+                )
                 preprocess_file_and_write_data(fname1, txn, filename2=fname2, idx=i)
 
     envw.close()
     return
-
 
 class Options:
 
@@ -451,13 +461,23 @@ def label_data(chain1, chain2, limit=6.):
         For each pair of residue, indicate if the two
         residues interact with each other.
     """
-    # Get the carbon atoms (there should be exactly one per residue)
-    carbons1 = [atom for atom in chain1.get_atoms() if atom.get_name() == "CA"]
-    carbons2 = [atom for atom in chain2.get_atoms() if atom.get_name() == "CA"]
+    # Get the residues number per atom
+    labels = []
+    for residue1, residue2 in product(chain1, chain2):
+        atom1 = None
+        atom2 = None
+        for atom in residue1.get_atoms():
+            if atom.get_name() == "CA":
+                atom1 = atom
+        for atom in residue2.get_atoms():
+            if atom.get_name() == "CA":
+                atom2 = atom
+        if (atom1 is None) or (atom2 is None):
+            labels.append(False)
+        else:
+            labels.append(float(atom1 - atom2) < limit)
 
-    # Compute labels
-    labels = np.array([float(i - j < limit) for i, j in product(carbons1, carbons2)])
-    return labels.astype(np.float32)
+    return np.array(labels).astype(np.float32)
 
 
 def pdb2fasta(chain):
@@ -491,3 +511,17 @@ def _build_dir(parser, arg):
     else:
         os.makedirs(arg)
         return arg
+
+
+def _group_per_residue(atoms_residue, x):
+    nresidue = len(set(atoms_residue))
+    idx = 0
+    groups = []
+    last_residue = -1
+    for residue_id, atom_data in zip(atoms_residue, x):
+        if residue_id != last_residue:
+            last_residue = residue_id
+            groups.append([atom_data])
+        else:
+            groups[-1].append(atom_data)
+    return [torch.stack(group) for group in groups]

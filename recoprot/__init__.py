@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import logging
+logging.getLogger(__name__).addHandler(logging.NullHandler())
+
+
 from .preprocess import (
     preprocess_file_and_write_data,
     read_pdb_2prot_same_file,
@@ -13,7 +17,15 @@ from .preprocess import (
     pdb2fasta,
     parse_args,
     Options,
-    preprocess_main
+    preprocess,
+    preprocess_main,
+    N_PROTEINS
 )
-from .nn import train, read_input_file, CompleteNetwork, GNN, NoConv
+from .nn import (
+    CompleteNetwork,
+    GNN,
+    NoConv
+)
 from .pssm import call_psiblast
+from .data import ProteinsDataset
+from .train import train

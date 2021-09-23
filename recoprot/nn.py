@@ -4,99 +4,18 @@
 Module containing the different neural networks for the experiments.
 """
 
+# Python Standard 
 from itertools import product
+
+# Prerequisites
 import numpy as np
 import torch
-from .preprocess import (
-    CATEGORIES,
-    ATOMS,
-    RESIDUES,
-    SEP,
-    L_ENC_ATOMS,
-    L_ENC_RESIDUES,
-    L_NEIGHBORS_IN,
-    L_NEIGHBORS_OUT,
-    L_RESIDUES,
-    R_ENC_ATOMS,
-    R_ENC_RESIDUES,
-    R_NEIGHBORS_IN,
-    R_NEIGHBORS_OUT,
-    R_RESIDUES,
-    LABELS
-)
+
+# Internal
+from .preprocess import CATEGORIES, _group_per_residue
 
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-def read_input_file(txn, idx):
-    """
-    Read a pair of protein from the LMDB file.
-    
-    Parameters
-    ----------
-    txn : lmdb.Transaction
-        LMDB transaction to write in.
-    idx : int
-        Index of the PDB file (ex: you are reading the data from PDB
-        file in the environment and you are currently reading the
-        idx'th one).
-
-    Returns
-    -------
-    tuple of tuple of np.ndarray
-        Input of the GNN.
-    torch.tensor of float
-        Target labels of the GNN.
-    """
-    prefix = f"{idx}"
-
-    l_enc_atoms = np.frombuffer(txn.get(SEP.join([prefix, L_ENC_ATOMS]).encode()), dtype=np.float32)
-    l_enc_residues = np.frombuffer(txn.get(SEP.join([prefix, L_ENC_RESIDUES]).encode()), dtype=np.float32)
-    l_neighbors_in = np.frombuffer(txn.get(SEP.join([prefix, L_NEIGHBORS_IN]).encode()), dtype=np.int64)
-    l_neighbors_out = np.frombuffer(txn.get(SEP.join([prefix, L_NEIGHBORS_OUT]).encode()), dtype=np.int64)
-    l_residues = np.frombuffer(txn.get(SEP.join([prefix, L_RESIDUES]).encode()), dtype=np.int64)
-    x1 = (
-        torch.from_numpy(np.copy(l_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS]))))),
-        torch.from_numpy(np.copy(l_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES]))))),
-        torch.from_numpy(np.copy(l_neighbors_in.reshape((-1, 10)))),
-        torch.from_numpy(np.copy(l_neighbors_out.reshape((-1, 10)))),
-        l_residues
-    )
-
-    r_enc_atoms = np.frombuffer(txn.get(SEP.join([prefix, R_ENC_ATOMS]).encode()), dtype=np.float32)
-    r_enc_residues = np.frombuffer(txn.get(SEP.join([prefix, R_ENC_RESIDUES]).encode()), dtype=np.float32)
-    r_neighbors_in = np.frombuffer(txn.get(SEP.join([prefix, R_NEIGHBORS_IN]).encode()), dtype=np.int64)
-    r_neighbors_out = np.frombuffer(txn.get(SEP.join([prefix, R_NEIGHBORS_OUT]).encode()), dtype=np.int64)
-    r_residues = np.frombuffer(txn.get(SEP.join([prefix, R_RESIDUES]).encode()), dtype=np.int64)
-    x2 = (
-        torch.from_numpy(np.copy(r_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS]))))),
-        torch.from_numpy(np.copy(r_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES]))))),
-        torch.from_numpy(np.copy(r_neighbors_in.reshape((-1, 10)))),
-        torch.from_numpy(np.copy(r_neighbors_out.reshape((-1, 10)))),
-        r_residues
-    )
-
-    labels = np.frombuffer(txn.get(SEP.join([prefix, LABELS]).encode()), dtype=np.float32)
-    labels = torch.from_numpy(np.copy(labels))
-    return (x1, x2), labels
-    
-
-def train(network, x, target, n_epoch=10):
-    model = network.to(DEVICE)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    func_loss = torch.nn.BCELoss()
-    losses = []
-    for epoch in range(1, n_epoch + 1):
-        result = model(x)
-        loss = func_loss(result, torch.squeeze(target).to(DEVICE))
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        print(f"Epoch {epoch:2d}/{n_epoch} -> loss = {loss}")
-        losses.append(loss)
-        
-    return losses
 
 
 class CompleteNetwork(torch.nn.Module):
@@ -135,17 +54,7 @@ class CompleteNetwork(torch.nn.Module):
 
     @staticmethod
     def _group_per_residue(atoms_residue, x):
-        nresidue = len(set(atoms_residue))
-        idx = 0
-        groups = []
-        last_residue = -1
-        for residue_id, atom_data in zip(atoms_residue, x):
-            if residue_id != last_residue:
-                last_residue = residue_id
-                groups.append([atom_data])
-            else:
-                groups[-1].append(atom_data)
-        return [torch.stack(group).mean(axis=0) for group in groups]
+        return [tensor.mean(axis=0) for tensor in _group_per_residue(atoms_residue, x)]
 
     
 class NoConv(torch.nn.Module):
