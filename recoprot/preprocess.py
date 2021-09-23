@@ -477,20 +477,28 @@ def label_data(chain1, chain2, limit=6.):
     """
     # Get the residues number per atom
     labels = []
-    for residue1, residue2 in product(chain1, chain2):
+    residues_product = list(product(chain1.get_residues(),
+                                    chain2.get_residues()))
+    alpha_carbon = "CA"
+    for residue1, residue2 in residues_product:
         atom1 = None
         atom2 = None
         for atom in residue1.get_atoms():
-            if atom.get_name() == "CA":
+            if atom.get_name() == alpha_carbon:
                 atom1 = atom
+                break
         for atom in residue2.get_atoms():
-            if atom.get_name() == "CA":
+            if atom.get_name() == alpha_carbon:
                 atom2 = atom
+                break
         if (atom1 is None) or (atom2 is None):
-            labels.append(False)
+            labels.append(float(False))
         else:
-            labels.append(float(atom1 - atom2) < limit)
-
+            labels.append(float(atom1 - atom2 < limit))
+    print(len(labels))
+    size =len(residues_product) 
+    print(size)
+    assert(len(labels) == size)
     return np.array(labels).astype(np.float32)
 
 

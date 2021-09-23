@@ -40,8 +40,8 @@ def train(network, dataset, n_epoch=10):
             size1 = len(set([int(i) for i in x[0][4]]))
             size2 = len(set([int(i) for i in x[1][4]]))
             loss = train_step(x, y)
-            logging.info(f"Epoch {epoch:2d}/{n_epoch} -> loss = {loss}")
-            losses.append(loss)
+        logging.info(f"Epoch {epoch:2d}/{n_epoch} -> loss = {loss}")
+        losses.append(loss)
         
     return losses
 
