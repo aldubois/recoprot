@@ -165,7 +165,18 @@ def parse_args():
                         type=int, default=None,
                         help="Size of the LMDB in Bytes")
 
+
+    # Optional arguments
+    parser.add_argument("--info", dest="log", action="store_true", default=False)
+    
     args = parser.parse_args()
+
+    log_fmt = '%(levelname)s: %(message)s'
+    if args.log:
+        logging.basicConfig(format=log_fmt, level=logging.INFO)
+    else:
+        logging.basicConfig(format=log_fmt)
+    
     return Options(args.inp, args.out, args.same_file, args.db_size)
 
 

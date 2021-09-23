@@ -3,7 +3,6 @@
 import logging
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-
 from .preprocess import (
     preprocess_file_and_write_data,
     read_pdb_2prot_same_file,
