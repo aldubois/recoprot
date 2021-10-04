@@ -14,10 +14,10 @@ LABELS = "labels"
 N_PROTEINS = "n_proteins"
 
 SAME_FILE = "*.pdb"
-BOUND_LIGAND_FILE = "*_l_b.pdb"
-BOUND_RECEPTOR_FILE = "*_r_b.pdb"
-UNBOUND_LIGAND_FILE = "*_l_u.pdb"
-UNBOUND_RECEPTOR_FILE = "*_r_u.pdb"
+BOUND_LIGAND = "{}_l_b.pdb"
+BOUND_RECEPTOR = "{}_r_b.pdb"
+UNBOUND_LIGAND = "{}_l_u.pdb"
+UNBOUND_RECEPTOR = "{}_r_u.pdb"
 
 L_ENC_ATOMS = SEP.join([LIGAND, ENC_ATOMS])
 L_ENC_RESIDUES = SEP.join([LIGAND, ENC_RESIDUES])

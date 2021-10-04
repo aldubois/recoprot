@@ -14,7 +14,7 @@ def test_train_no_batch():
     # Build a small LMDB database from test data
     input_dir = "tests/data/diff_file"
     lmdb_dir = "/tmp/data"
-    options = recoprot.Options(input_dir, lmdb_dir, False, 50000000)
+    options = recoprot.Options(input_dir, lmdb_dir, False, 50000000, ["1A2K"])
     recoprot.preprocess(options)
 
     # Build the dataset and it's loader (no batch)

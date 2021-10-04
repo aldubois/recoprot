@@ -35,10 +35,10 @@ from .symbols import (
     LABELS,
     N_PROTEINS,
     SAME_FILE,
-    BOUND_LIGAND_FILE,
-    BOUND_RECEPTOR_FILE,
-    UNBOUND_LIGAND_FILE,
-    UNBOUND_RECEPTOR_FILE,
+    BOUND_LIGAND,
+    BOUND_RECEPTOR,
+    UNBOUND_LIGAND,
+    UNBOUND_RECEPTOR,
     L_ENC_ATOMS,
     L_ENC_RESIDUES,
     L_NEIGHBORS_IN,
@@ -79,41 +79,32 @@ def preprocess(options):
                 preprocess_file_and_write_data(fname, txn, idx=i)
 
     else:
-        file_type = os.path.join(options.inp, "*_l_u.pdb")
-        prot_names = [
-            os.path.basename(fname).split("_")[0]
-            for fname in glob.glob(file_type)
-        ]
-        struct_type = ["b", "u"]
-        files = list(product(prot_names, struct_type))
         with envw.begin(write=True) as txn:
-            txn.put(N_PROTEINS.encode(), str(len(files)).encode())
-            for i, (pname, struct) in enumerate(files):
-                fname1 = os.path.join(options.inp, f"{pname}_l_{struct}.pdb")
-                fname2 = os.path.join(options.inp, f"{pname}_r_{struct}.pdb")
+            txn.put(N_PROTEINS.encode(), str(len(options.proteins)).encode())
+            for i, pname in enumerate(options.proteins):
                 logging.info(
-                    f"{i+1}/{len(files)} : Preprocessing files "
-                    f"{os.path.basename(fname1)} and "
-                    f"{os.path.basename(fname2)}."
+                    f"{i+1}/{len(PROTEINS)} : Preprocessing protein {pname}"
                 )
-                preprocess_file_and_write_data(fname1, txn, filename2=fname2, idx=i)
-
+                preprocess_protein_bound_unbound(pname, txn, options.inp, i)
     envw.close()
     return
 
+
 class Options:
 
-    def __init__(self, inp, out, same_file, db_size):
+    def __init__(self, inp, out, same_file, db_size, proteins):
         self.inp = inp
         self.out = out
         self.same_file = same_file
         self.db_size = db_size
+        self.proteins = (PROTEINS if proteins is None else proteins)
         return
 
     def __repr__(self):
         return (f"Options(inp={self.inp}, out={self.out},"
                 f" same_file={self.same_file},"
-                f" db_size={self.db_size})")
+                f" db_size={self.db_size},"
+                f" proteins={self.proteins})")
     
 
 def parse_args():
@@ -150,6 +141,12 @@ def parse_args():
                         default=False,
                         help="Display information messages")
     
+    # Optional arguments
+    parser.add_argument("-p", "--proteins", dest="proteins",
+                        action="store_true",
+                        default=None,
+                        help="List of proteins to preprocess")
+    
     args = parser.parse_args()
 
     log_fmt = '%(levelname)s: %(message)s'
@@ -158,10 +155,34 @@ def parse_args():
     else:
         logging.basicConfig(format=log_fmt)
     
-    return Options(args.inp, args.out, args.same_file, args.db_size)
+    return Options(args.inp, args.out, args.same_file, args.db_size, args.proteins)
 
 
-def preprocess_file_and_write_data(filename, txn, filename2=None, idx=0, distance=6.):
+def preprocess_protein_bound_unbound(protein_name, txn, directory, idx=0, distance=6.):
+    
+    fname_l_bound = os.path.join(directory, BOUND_LIGAND.format(protein_name))
+    fname_r_bound = os.path.join(directory, BOUND_RECEPTOR.format(protein_name))
+    fname_l_unbound = os.path.join(directory, UNBOUND_LIGAND.format(protein_name))
+    fname_r_unbound = os.path.join(directory, UNBOUND_RECEPTOR.format(protein_name))
+
+    bound_chain1, bound_chain2 = read_pdb_2prot_different_files(fname_l_bound, fname_r_bound)
+    unbound_chain1, unbound_chain2 = read_pdb_2prot_different_files(fname_l_unbound, fname_r_unbound)
+
+    bound_residues1 = set([i.get_id()[1] for i in bound_chain1.get_residues()])
+    bound_residues2 = set([i.get_id()[1] for i in bound_chain2.get_residues()])
+    unbound_residues1 = set([i.get_id()[1] for i in unbound_chain1.get_residues()])
+    unbound_residues2 = set([i.get_id()[1] for i in unbound_chain2.get_residues()])
+
+    common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
+    common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
+    x = (preprocess_protein(unbound_chain1, common_residues1),
+         preprocess_protein(unbound_chain2, common_residues2))
+    labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
+    write_data(x, labels, txn, idx)
+    return
+
+
+def preprocess_file_and_write_data(filename, txn, idx=0, distance=6.):
     """
     Do the full preprocessing of a file containing 2 proteins.
 
@@ -182,13 +203,15 @@ def preprocess_file_and_write_data(filename, txn, filename2=None, idx=0, distanc
     distance : float
         Distance max for two residues to interact.
     """
-    x, labels = (
-        preprocess_file(filename, distance=distance)
-        if filename2 is None else
-        preprocess_file(filename,
-                        filename2=filename2,
-                        distance=distance)
-    )
+    x, labels = preprocess_file(filename, distance=distance)
+    write_data(x, labels, txn, idx)
+    return
+
+
+def write_data(x, labels, txn, idx):
+    """
+    Write data input of the GNN and its labels.
+    """
     prefix = f"{idx}"
     # Put ligand protein in file
     txn.put(SEP.join([prefix, L_ENC_ATOMS]).encode(),
@@ -295,7 +318,7 @@ def preprocess_file(filename, filename2=None, distance=6.):
     return x, target
 
 
-def preprocess_protein(chain):
+def preprocess_protein(chain, residues_to_consider=None):
     """
     Preprocess a protein chain to the input data format of the GNN.
 
@@ -310,13 +333,17 @@ def preprocess_protein(chain):
         Arrays containing the atoms encoding, the residues encoding,
         the neighbors encoding and the residue number per atom.
     """
-    atoms = list(chain.get_atoms())
+    atoms = (
+        list(chain.get_atoms()) if residues_to_consider is None
+        else [i for i in chain.get_atoms()
+              if i.get_parent().get_id()[1] in residues_to_consider]
+    )
     residues = [atom.get_parent().get_resname() for atom in atoms]
     x_atoms = encode_protein_atoms(atoms).toarray()
     x_residues = encode_protein_residues(residues).toarray()
     x_same_neigh, x_diff_neigh = encode_neighbors(atoms)
     residues_names = np.array([atom.get_parent().get_id()[1]
-                               for atom in chain.get_atoms()])
+                               for atom in  atoms])
     x = (x_atoms.astype(np.float32), x_residues.astype(np.float32),
          x_same_neigh, x_diff_neigh, residues_names)
     return x
@@ -434,7 +461,7 @@ def encode_neighbors(atoms, n_neighbors=10):
     return neighbors_in, neighbors_out
 
 
-def label_data(chain1, chain2, limit=6.):
+def label_data(chain1, chain2, limit=6., residues_to_consider1=None, residues_to_consider2=None):
     """
     Determines if residues from two chains interact with each other.
 
@@ -455,10 +482,18 @@ def label_data(chain1, chain2, limit=6.):
     """
     # Get the residues number per atom
     labels = []
-    residues_product = list(product(chain1.get_residues(),
-                                    chain2.get_residues()))
+    residues1 = (
+        list(chain1.get_residues()) if residues_to_consider1 is None
+        else [r for r in chain1.get_residues()
+              if r.get_id()[1] in residues_to_consider1]
+    )
+    residues2 = (
+        list(chain2.get_residues()) if residues_to_consider2 is None
+        else [r for r in chain2.get_residues()
+              if r.get_id()[1] in residues_to_consider2]
+    )
     alpha_carbon = "CA"
-    for residue1, residue2 in residues_product:
+    for residue1, residue2 in product(residues1, residues2):
         atom1 = None
         atom2 = None
         for atom in residue1.get_atoms():
@@ -473,10 +508,6 @@ def label_data(chain1, chain2, limit=6.):
             labels.append(float(False))
         else:
             labels.append(float(atom1 - atom2 < limit))
-    print(len(labels))
-    size =len(residues_product) 
-    print(size)
-    assert(len(labels) == size)
     return np.array(labels).astype(np.float32)
 
 
