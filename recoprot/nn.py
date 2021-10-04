@@ -12,7 +12,8 @@ import numpy as np
 import torch
 
 # Internal
-from .preprocess import CATEGORIES, _group_per_residue
+from .symbols import CATEGORIES
+from .preprocess import _group_per_residue
 
 
 DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

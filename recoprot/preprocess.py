@@ -12,6 +12,7 @@ import warnings
 import argparse
 import logging
 
+
 # External Dependencies
 import numpy as np
 from sklearn.preprocessing import OneHotEncoder
@@ -20,65 +21,42 @@ from Bio.PDB.PDBParser import PDBParser
 import lmdb
 import torch
 
+# Recoprot
+from .symbols import (
+    SEP,
+    LIGAND,
+    RECEPTOR,
+    ENC_ATOMS,
+    ENC_RESIDUES,
+    NEIGHBORS_IN,
+    NEIGHBORS_OUT,
+    ATOMS,
+    RESIDUES,
+    LABELS,
+    N_PROTEINS,
+    SAME_FILE,
+    BOUND_LIGAND_FILE,
+    BOUND_RECEPTOR_FILE,
+    UNBOUND_LIGAND_FILE,
+    UNBOUND_RECEPTOR_FILE,
+    L_ENC_ATOMS,
+    L_ENC_RESIDUES,
+    L_NEIGHBORS_IN,
+    L_NEIGHBORS_OUT,
+    L_RESIDUES,
+    R_ENC_ATOMS,
+    R_ENC_RESIDUES,
+    R_NEIGHBORS_IN,
+    R_NEIGHBORS_OUT,
+    R_RESIDUES,
+    CATEGORIES,
+    RESIDUES_TABLE,
+    TRAINING,
+    VALIDATION,
+    TESTING,
+    PROTEINS
+)
 
-SEP = "."
-LIGAND = "ligand"
-RECEPTOR = "receptor"
-ENC_ATOMS = "encoded_atoms"
-ENC_RESIDUES = "encoded_residues"
-NEIGHBORS_IN = "neighbors_in"
-NEIGHBORS_OUT = "neighbors_out"
-ATOMS = "atoms"
-RESIDUES = "residues"
-LABELS = "labels"
-N_PROTEINS = "n_proteins"
-
-SAME_FILE = "*.pdb"
-DIFF_FILE = "*_l_u.pdb"
-
-L_ENC_ATOMS = SEP.join([LIGAND, ENC_ATOMS])
-L_ENC_RESIDUES = SEP.join([LIGAND, ENC_RESIDUES])
-L_NEIGHBORS_IN = SEP.join([LIGAND, NEIGHBORS_IN])
-L_NEIGHBORS_OUT = SEP.join([LIGAND, NEIGHBORS_OUT])
-L_RESIDUES = SEP.join([LIGAND, RESIDUES])
-
-R_ENC_ATOMS = SEP.join([RECEPTOR, ENC_ATOMS])
-R_ENC_RESIDUES = SEP.join([RECEPTOR, ENC_RESIDUES])
-R_NEIGHBORS_IN = SEP.join([RECEPTOR, NEIGHBORS_IN])
-R_NEIGHBORS_OUT = SEP.join([RECEPTOR, NEIGHBORS_OUT])
-R_RESIDUES = SEP.join([RECEPTOR, RESIDUES])
-
-
-CATEGORIES = {
-    ATOMS: ['1', 'C', 'CA', 'CB', 'CG', 'CH2', 'N',
-            'NH2', 'O1', 'O2', 'OG','OH', 'SE'],
-    RESIDUES: ['1', 'ALA', 'ARG', 'ASN', 'ASP', 'CYS', 'GLN',
-               'GLU', 'GLY', 'HIS', 'ILE', 'LEU', 'LYS', 'MET',
-               'PHE', 'PRO', 'SER', 'THR', 'TRP', 'TYR', 'VAL']
-}
-
-RESIDUES_TABLE = {
-    "ALA": "A",
-    "CYS": "C",
-    "ASP": "D",
-    "GLU": "E",
-    "PHE": "F",
-    "GLY": "G",
-    "HIS": "H",
-    "ILE": "I",
-    "LYS": "K",
-    "LEU": "L",
-    "MET": "M",
-    "ASN": "N",
-    "PRO": "P",
-    "GLN": "Q",
-    "ARG": "R",
-    "SER": "S",
-    "THR": "T",
-    "VAL": "V",
-    "TRP": "W",
-    "TYR": "Y"
-}
 
 
 def preprocess_main():

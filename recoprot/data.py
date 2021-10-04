@@ -5,7 +5,7 @@ import lmdb
 import torch
 from torch.utils.data import Dataset
 
-from .preprocess import (
+from .symbols import (
     CATEGORIES,
     ATOMS,
     RESIDUES,
