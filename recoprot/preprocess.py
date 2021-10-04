@@ -173,6 +173,10 @@ def preprocess_protein_bound_unbound(protein_name, txn, directory, idx=0, distan
     unbound_residues1 = set([i.get_id()[1] for i in unbound_chain1.get_residues()])
     unbound_residues2 = set([i.get_id()[1] for i in unbound_chain2.get_residues()])
 
+    # Patches for residues number correspondance betzeen bound and unbound structures
+    if (protein_name == "1EZU"):
+        unbound_residues2 = set([i + 400 for i in unbound_residues2])
+
     common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
     common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
     x = (preprocess_protein(unbound_chain1, common_residues1),
