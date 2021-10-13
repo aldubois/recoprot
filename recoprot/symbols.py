@@ -72,10 +72,7 @@ TRAINING = [
     "2J7P", "1US7", "2PCC", "1B6C", "1AZS", "2IDO", "1EER", "1BGX",
     "1GPW", "1SBB", "1R0R", "1Z5Y", "2FD6", "1GP2", "1JTG", "1PXV",
     "2C0L", "2CFH", "1JPS", "1HCF", "1XQS", "1CLV", "2O3B", "3SGQ",
-
-    # TODO: "1ATN",
-
-    "2HLE", "1F6M", "1M10", "1OPH", "3D5S", "1QFW", "1R6Q",
+    "1ATN", "2HLE", "1F6M", "1M10", "1OPH", "3D5S", "1QFW", "1R6Q",
     "1Y64", "BOYV", "2UUY", "1KXP", "1WDW", "1ML0", "9QFW", "1BUH",
     "1FQ1", "1PVH", "1GL1", "3BP8", "1KLU", "1TMQ", "1FCC", "1NSN",
     "1JIW", "1E6E", "1DFJ", "2I9B", "2AYO", "1ACB", "1K74", "1OFU",
@@ -91,16 +88,9 @@ TRAINING = [
 
 VALIDATION = [
     "2OOB", "2SIC", "1FLE", "1IRA", "2MTA", "1BKD", "1OYV", "1AVX",
-    "2FJU", "1MQ8",
-
-    # TODO: "2BTF",
-
-    "2AJF", "1K4C", "1E4K", "2JEL", "1CGI",
+    "2FJU", "1MQ8", "2BTF", "2AJF", "1K4C", "1E4K", "2JEL", "1CGI",
     "1ZM4", "1JWH", "2G77", "1I4D", "1KTZ", "1AHW", "1GCQ", "1BVK",
-    "1DQJ", "2OZA", "2ABZ", "2VIS", "1EFN", "1FC2",
-
-    # TODO: "1JMO", "1H1V",
-
+    "1DQJ", "2OZA", "2ABZ", "2VIS", "1EFN", "1FC2", "1JMO", "1H1V",
     "1IJK", "2NZ8", "1PPE"
 ]
 
@@ -111,8 +101,7 @@ TESTING = [
     "1JTD", "3H2V", "4DN4", "BP57", "3L5W", "3A4S", "CP57", "3DAW",
     "3VLB", "3K75", "2VXT", "3G6D", "3EO1", "4JCV", "4HX3", "3F1P",
     "3AAD", "3EOA", "3MXW", "3L89", "4M76", "BAAD", "4FZA", "4LW4",
-    "1RKE", "3FN1", "3S9D", "3H11", "2A1A",
-    "3P57"
+    "1RKE", "3FN1", "3S9D", "3H11", "2A1A", "3P57"
 ]
 
 PROTEINS = TRAINING + VALIDATION + TESTING

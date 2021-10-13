@@ -173,11 +173,14 @@ def preprocess_protein_bound_unbound(protein_name, txn, directory, idx=0, distan
     unbound_res1 = list(unbound_chain1.get_residues())
     unbound_res2 = list(unbound_chain2.get_residues())
 
-    bound_res1, unbound_res1 = align_proteins_residues(bound_res1, unbound_res2)
-    bound_res2, unbound_res2 = align_proteins_residues(unbound_res1, unbound_res2)
+    logging.info(f"    Ligand:")
+    bound_res1, unbound_res1 = align_proteins_residues(bound_res1, unbound_res1)
+    logging.info(f"    Receptor:")
+    bound_res2, unbound_res2 = align_proteins_residues(bound_res2, unbound_res2)
     x = (preprocess_protein(unbound_res1), preprocess_protein(unbound_res2))
     labels = label_data(bound_res1, bound_res2, distance)
     write_data(x, labels, txn, idx)
+    print()
     return
 
 

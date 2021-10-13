@@ -4,6 +4,8 @@
 Residues alignment functions.
 """
 
+import logging
+
 import numpy as np
 
 DIAG = 0 
@@ -37,6 +39,8 @@ def align_proteins_residues(residues1, residues2):
     indices1, indices2 = _align(seq1, seq2, s, ptr)
     res1 = [residues1[i] for i in indices1]
     res2 = [residues2[i] for i in indices2]
+    logging.info(f"        Alignment bound structure: {len(res1)} / {len(residues1)}.")
+    logging.info(f"        Alignment unbound structure: {len(res2)} / {len(residues2)}.")
     return res1, res2
 
 
@@ -92,6 +96,7 @@ def _needleman_wunsch_matrix(seq1, seq2, match=1, mismatch=-1, indel=-1):
                 ptr[i,j] = LEFT
 
     return s, ptr
+
 
 
 def _align(seq1, seq2, s, ptr):
