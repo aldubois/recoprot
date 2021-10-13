@@ -56,7 +56,7 @@ from .symbols import (
     TESTING,
     PROTEINS
 )
-
+from .alignment import align_proteins_residues
 
 
 def preprocess_main():
@@ -168,191 +168,16 @@ def preprocess_protein_bound_unbound(protein_name, txn, directory, idx=0, distan
     bound_chain1, bound_chain2 = read_pdb_2prot_different_files(fname_l_bound, fname_r_bound)
     unbound_chain1, unbound_chain2 = read_pdb_2prot_different_files(fname_l_unbound, fname_r_unbound)
 
-    bound_residues1 = set([i.get_id()[1] for i in bound_chain1.get_residues()])
-    bound_residues2 = set([i.get_id()[1] for i in bound_chain2.get_residues()])
-    unbound_residues1 = set([i.get_id()[1] for i in unbound_chain1.get_residues()])
-    unbound_residues2 = set([i.get_id()[1] for i in unbound_chain2.get_residues()])
+    bound_res1 = list(bound_chain1.get_residues())
+    bound_res2 = list(bound_chain2.get_residues())
+    unbound_res1 = list(unbound_chain1.get_residues())
+    unbound_res2 = list(unbound_chain2.get_residues())
 
-    # Patches for residues number correspondance betzeen bound and unbound structures
-    if protein_name == "1EZU":
-        unbound_residues2 = set([i + 400 for i in unbound_residues2])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, common_residues1),
-             preprocess_protein(unbound_chain2, [i - 400 for i in common_residues2]))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1F51":
-        unbound_residues1 = set([i + 1200 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i - 1200 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1LFD":
-        unbound_residues2 = set([i + 200 for i in unbound_residues2])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, common_residues1),
-             preprocess_protein(unbound_chain2, [i - 200 for i in common_residues2]))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1GRN":
-        unbound_residues1 = set([i + 220 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i - 220 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1GPW":
-        unbound_residues1 = set([i - 300 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i + 300 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1CLV":
-        unbound_residues1 = set([i + 500 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i - 500 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "3D5S":
-        unbound_residues1 = set([i - 90 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i + 90 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1KXP":
-        unbound_residues2 = set([i - 400 for i in unbound_residues2])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, common_residues1),
-             preprocess_protein(unbound_chain2, [i + 400 for i in common_residues2]))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1TMQ":
-        unbound_residues1 = set([i + 500 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i - 500 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1FFW":
-        unbound_residues1 = set([i + 158 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i - 158 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1AK4":
-        unbound_residues1 = set([i + 400 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i - 400 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1BVN":
-        unbound_residues1 = set([i + 800 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i - 800 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1AVX":
-        unbound_residues1 = set([i + 500 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i - 500 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "1FC2":
-        unbound_residues2 = set([i + 118 for i in unbound_residues2])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, common_residues1),
-             preprocess_protein(unbound_chain2, [i - 118 for i in common_residues2]))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "2X9A":
-        unbound_residues2 = set([i + 320 for i in unbound_residues2])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, common_residues1),
-             preprocess_protein(unbound_chain2, [i - 320 for i in common_residues2]))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name in ["BP57", "CP57"]:
-        unbound_residues1 = set([i - 1722 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i +1722 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "3F1P":
-        unbound_residues1 = set([i + 351 for i in unbound_residues1])
-        unbound_residues2 = set([i + 236 for i in unbound_residues2])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i - 351 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, [i - 236 for i in common_residues2]))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "4M76":
-        unbound_residues2 = set([i + 993 for i in unbound_residues2])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, common_residues1),
-             preprocess_protein(unbound_chain2, [i - 993 for i in common_residues2]))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    elif protein_name == "3P57":
-        unbound_residues1 = set([i - 1722 for i in unbound_residues1])
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, [i + 1722 for i in common_residues1]),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
-
-    else:
-        common_residues1 = sorted(list(bound_residues1.intersection(unbound_residues1)))
-        common_residues2 = sorted(list(bound_residues2.intersection(unbound_residues2)))
-        x = (preprocess_protein(unbound_chain1, common_residues1),
-             preprocess_protein(unbound_chain2, common_residues2))
-        labels = label_data(bound_chain1, bound_chain2, distance, common_residues1, common_residues2)
-        write_data(x, labels, txn, idx)
+    bound_res1, unbound_res1 = align_proteins_residues(bound_res1, unbound_res2)
+    bound_res2, unbound_res2 = align_proteins_residues(unbound_res1, unbound_res2)
+    x = (preprocess_protein(unbound_res1), preprocess_protein(unbound_res2))
+    labels = label_data(bound_res1, bound_res2, distance)
+    write_data(x, labels, txn, idx)
     return
 
 
@@ -493,19 +318,22 @@ def preprocess_file(filename, filename2=None, distance=6.):
         read_pdb_2prot_same_file(filename) if filename2 is None
         else read_pdb_2prot_different_files(filename, filename2)
     )
-    x = (preprocess_protein(chain1), preprocess_protein(chain2))
-    target = label_data(chain1, chain2, distance)
+    residues1 = list(chain1.get_residues())
+    residues2 = list(chain2.get_residues())
+    x = (preprocess_protein(residues1),
+         preprocess_protein(residues2))
+    target = label_data(residues1, residues2, distance)
     return x, target
 
 
-def preprocess_protein(chain, residues_to_consider=None):
+def preprocess_protein(residues):
     """
     Preprocess a protein chain to the input data format of the GNN.
 
     Parameters
     ----------
-    chain: Bio.PDB.Chain.Chain
-        Protein's chain.
+    residues: list of Bio.PDB.Residue.Residue
+        Protein's residues list to consider.
 
     Returns
     -------
@@ -513,14 +341,10 @@ def preprocess_protein(chain, residues_to_consider=None):
         Arrays containing the atoms encoding, the residues encoding,
         the neighbors encoding and the residue number per atom.
     """
-    atoms = (
-        list(chain.get_atoms()) if residues_to_consider is None
-        else [i for i in chain.get_atoms()
-              if i.get_parent().get_id()[1] in residues_to_consider]
-    )
-    residues = [atom.get_parent().get_resname() for atom in atoms]
+    atoms = [atom for residue in residues for atom in residue.get_atoms()]
+    atoms_resname = [atom.get_parent().get_resname() for atom in atoms]
     x_atoms = encode_protein_atoms(atoms).toarray()
-    x_residues = encode_protein_residues(residues).toarray()
+    x_residues = encode_protein_residues(atoms_resname).toarray()
     x_same_neigh, x_diff_neigh = encode_neighbors(atoms)
     residues_names = np.array([atom.get_parent().get_id()[1]
                                for atom in  atoms])
@@ -641,16 +465,16 @@ def encode_neighbors(atoms, n_neighbors=10):
     return neighbors_in, neighbors_out
 
 
-def label_data(chain1, chain2, limit=6., residues_to_consider1=None, residues_to_consider2=None):
+def label_data(residues1, residues2, limit=6.):
     """
     Determines if residues from two chains interact with each other.
 
     Parameters
     ----------
-    chain1: Bio.PDB.Chain.Chain
-        Ligand protein's chain.
-    chain2: Bio.PDB.Chain.Chain
-        Receptor protein's chain.
+    residues1 : list of Bio.PDB.Residue.Residue
+        List of residues to consider in protein1.
+    residues2 : list of Bio.PDB.Residue.Residue
+        List of residues to consider in protein2.
     limit: float
         Distance limit in Angstrom.
 
@@ -662,16 +486,6 @@ def label_data(chain1, chain2, limit=6., residues_to_consider1=None, residues_to
     """
     # Get the residues number per atom
     labels = []
-    residues1 = (
-        list(chain1.get_residues()) if residues_to_consider1 is None
-        else [r for r in chain1.get_residues()
-              if r.get_id()[1] in residues_to_consider1]
-    )
-    residues2 = (
-        list(chain2.get_residues()) if residues_to_consider2 is None
-        else [r for r in chain2.get_residues()
-              if r.get_id()[1] in residues_to_consider2]
-    )
     alpha_carbon = "CA"
     for residue1, residue2 in product(residues1, residues2):
         atom1 = None
