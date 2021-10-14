@@ -12,11 +12,8 @@ import numpy as np
 import torch
 
 # Internal
-from .symbols import CATEGORIES
+from .symbols import CATEGORIES, DEVICE
 from .preprocess import _group_per_residue
-
-
-DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class CompleteNetwork(torch.nn.Module):

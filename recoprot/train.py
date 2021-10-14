@@ -7,7 +7,7 @@ Module to train the GNN.
 import logging
 import torch
 
-from .nn import DEVICE
+from .symbols import DEVICE
 
 def train(network, dataset, n_epoch=10):
     """
