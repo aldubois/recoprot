@@ -37,18 +37,18 @@ def test_train_no_batch():
         PROT_NAME, DATA_DIR, 6.)
 
     x = (
-        [torch.from_numpy(np.copy(x_ref[0][0])),
-         torch.from_numpy(np.copy(x_ref[0][1])),
-         torch.from_numpy(np.copy(x_ref[0][2])),
-         torch.from_numpy(np.copy(x_ref[0][3])),
-         torch.from_numpy(np.copy(x_ref[0][4]))],
-        [torch.from_numpy(np.copy(x_ref[1][0])),
-         torch.from_numpy(np.copy(x_ref[1][1])),
-         torch.from_numpy(np.copy(x_ref[1][2])),
-         torch.from_numpy(np.copy(x_ref[1][3])),
-         torch.from_numpy(np.copy(x_ref[1][4]))],
+        [torch.from_numpy(np.copy(x_ref[0][0])).to(recoprot.DEVICE),
+         torch.from_numpy(np.copy(x_ref[0][1])).to(recoprot.DEVICE),
+         torch.from_numpy(np.copy(x_ref[0][2])).to(recoprot.DEVICE),
+         torch.from_numpy(np.copy(x_ref[0][3])).to(recoprot.DEVICE),
+         torch.from_numpy(np.copy(x_ref[0][4])).to(recoprot.DEVICE)],
+        [torch.from_numpy(np.copy(x_ref[1][0])).to(recoprot.DEVICE),
+         torch.from_numpy(np.copy(x_ref[1][1])).to(recoprot.DEVICE),
+         torch.from_numpy(np.copy(x_ref[1][2])).to(recoprot.DEVICE),
+         torch.from_numpy(np.copy(x_ref[1][3])).to(recoprot.DEVICE),
+         torch.from_numpy(np.copy(x_ref[1][4])).to(recoprot.DEVICE)],
     )
-    labels = torch.from_numpy(np.copy(labels_ref))
+    labels = torch.from_numpy(np.copy(labels_ref)).to(recoprot.DEVICE)
     
     # Build the dataset and it's loader (no batch)
     dataset = OneProteinDataset(x, labels)

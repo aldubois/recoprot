@@ -3,7 +3,7 @@
 import logging
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-from .symbols import PROTEINS
+from .symbols import PROTEINS, DEVICE
 from .alignment import align_proteins_residues
 from .preprocess import (
     preprocess_file_and_write_data,
