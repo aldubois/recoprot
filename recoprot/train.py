@@ -40,7 +40,8 @@ def train(network, dataset, n_epoch=10):
         positive += sum(y)
         length += len(y)
 
-    loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor([length / positive]))
+    weight = torch.tensor([length / positive]).to(DEVICE)
+    loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=weight)
     train_step = make_train_step(model, loss_fn, optimizer)
 
     for epoch in range(1, n_epoch + 1):
