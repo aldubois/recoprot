@@ -54,9 +54,13 @@ def test_train_no_batch():
     dataset = OneProteinDataset(x, labels)
 
     # Build the GNN
-    gnn = recoprot.CompleteNetwork([128, 256])
 
     # Train for 2 epochs
-    losses = recoprot.train(gnn, dataset, 2)
+    # Sometimes for some weight values the loss is at 0. and don't move so we repeat
+    for _ in range(10):
+        gnn = recoprot.CompleteNetwork([128, 256])
+        losses = recoprot.train(gnn, dataset, 2)
+        if losses[0] != 0.:
+            break
     assert losses[0] != losses[1]
     return
