@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 
+"""
+Recoprot : Module training GNN models to predict proteins docking.
+"""
+
 import logging
-logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 from .symbols import PROTEINS, DEVICE
 from .alignment import align_proteins_residues
@@ -37,3 +40,5 @@ from .data import (
     TestingDataset
 )
 from .train import train
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())

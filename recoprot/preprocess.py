@@ -24,12 +24,6 @@ import torch
 # Recoprot
 from .symbols import (
     SEP,
-    LIGAND,
-    RECEPTOR,
-    ENC_ATOMS,
-    ENC_RESIDUES,
-    NEIGHBORS_IN,
-    NEIGHBORS_OUT,
     ATOMS,
     RESIDUES,
     LABELS,
@@ -51,21 +45,28 @@ from .symbols import (
     R_RESIDUES,
     CATEGORIES,
     RESIDUES_TABLE,
-    TRAINING,
-    VALIDATION,
-    TESTING,
     PROTEINS
 )
 from .alignment import align_proteins_residues
 
 
 def preprocess_main():
+    """
+    Main function for setuptools entrypoint.
+    """
     options = parse_args()
     preprocess(options)
-    return
 
 
 def preprocess(options):
+    """
+    Full preprocessing based on user parser options.
+
+    Parameters
+    ----------
+    options : Options
+        Options given by the user through ArgParse.
+    """
     envw = lmdb.open(options.out, map_size=options.db_size)
 
     if options.same_file:
@@ -74,23 +75,25 @@ def preprocess(options):
         with envw.begin(write=True) as txn:
             txn.put(N_PROTEINS.encode(), str(len(files)).encode())
             for i, fname in enumerate(files):
-                logging.info(f"{i+1}/{len(files)} : Preprocessing "
-                             f"file {os.path.basename(fname)}.")
+                logging.info("%d/%d : Preprocessing file %s.",
+                             i + 1, len(files), os.path.basebale(fname))
                 preprocess_file_and_write_data(os.path.basename(fname), fname, txn, idx=i)
 
     else:
         with envw.begin(write=True) as txn:
             txn.put(N_PROTEINS.encode(), str(len(options.proteins)).encode())
             for i, pname in enumerate(options.proteins):
-                logging.info(
-                    f"{i+1}/{len(PROTEINS)} : Preprocessing protein {pname}"
-                )
+                logging.info("%d/%d : Preprocessing protein %s",
+                             i + 1, len(PROTEINS), pname)
                 preprocess_protein_bound_unbound(pname, txn, options.inp, i)
     envw.close()
-    return
 
 
 class Options:
+
+    """
+    Class containing user-defined options for preprocessing.
+    """
 
     def __init__(self, inp, out, same_file, db_size, proteins):
         self.inp = inp
@@ -98,14 +101,13 @@ class Options:
         self.same_file = same_file
         self.db_size = db_size
         self.proteins = (PROTEINS if proteins is None else proteins)
-        return
 
     def __repr__(self):
         return (f"Options(inp={self.inp}, out={self.out},"
                 f" same_file={self.same_file},"
                 f" db_size={self.db_size},"
                 f" proteins={self.proteins})")
-    
+
 
 def parse_args():
     """
@@ -113,16 +115,16 @@ def parse_args():
     """
 
     parser = argparse.ArgumentParser(description='Process PDB files.')
- 
+
     # Mandatory arguments
     parser.add_argument("-i", "--input-dir", dest='inp',
                         required=True, metavar='DIR',
-                        type=lambda x: _is_dir(parser, x),
+                        type=lambda inp: _is_dir(parser, inp),
                         help='Data output directory')
 
     parser.add_argument("-o", "--output-dir", dest='out',
                         required=True, metavar='DIR',
-                        type=lambda x: _build_dir(parser, x),
+                        type=lambda inp: _build_dir(parser, inp),
                         help='Data output directory')
 
     # Optional arguments
@@ -140,13 +142,13 @@ def parse_args():
                         action="store_true",
                         default=False,
                         help="Display information messages")
-    
+
     # Optional arguments
     parser.add_argument("-p", "--proteins", dest="proteins",
                         action="store_true",
                         default=None,
                         help="List of proteins to preprocess")
-    
+
     args = parser.parse_args()
 
     log_fmt = '%(levelname)s: %(message)s'
@@ -154,21 +156,35 @@ def parse_args():
         logging.basicConfig(format=log_fmt, level=logging.INFO)
     else:
         logging.basicConfig(format=log_fmt)
-    
+
     return Options(args.inp, args.out, args.same_file, args.db_size, args.proteins)
 
 
 def preprocess_protein_bound_unbound(protein_name, txn, directory, idx=0, distance=6.):
-    
-    x, labels = preprocess_ligand_receptor_bound_unbound(
+    """
+    Full processing of a protein pair with its bound and unbound structures.
+
+    Parameters
+    ----------
+    protein_name: str
+        Name of the protein.
+    txn : LMDB transaction object
+        Transaction to write the preprocessed data.
+    directory: str
+        Directory of the input protein PDB files.
+    idx: int
+        Integer to write a specific entry in the LMDB.
+    distance: float
+        Limit distance to consider two residues to interact.
+    """
+    xdata, labels = preprocess_ligand_receptor_bound_unbound(
         protein_name,
         directory,
         distance
     )
-    verify_data(x, labels)
-    write_data(protein_name, x, labels, txn, idx)
+    verify_data(xdata, labels)
+    write_data(protein_name, xdata, labels, txn, idx)
     print()
-    return
 
 
 def preprocess_ligand_receptor_bound_unbound(name, folder, distance):
@@ -186,7 +202,7 @@ def preprocess_ligand_receptor_bound_unbound(name, folder, distance):
 
     Returns
     -------
-    x : tuple
+    xdata : tuple
         Input of the GNN.
     labels : torch.tensor
         Target for the GNN.
@@ -204,15 +220,15 @@ def preprocess_ligand_receptor_bound_unbound(name, folder, distance):
     res_l_u = list(chain_l_u.get_residues())
     res_r_u = list(chain_r_u.get_residues())
 
-    logging.info(f"    Ligand:")
+    logging.info("    Ligand:")
     res_l_b, res_l_u = align_proteins_residues(res_l_b, res_l_u)
 
-    logging.info(f"    Receptor:")
+    logging.info("    Receptor:")
     res_r_b, res_r_u = align_proteins_residues(res_r_b, res_r_u)
 
-    x = (preprocess_protein(res_l_u), preprocess_protein(res_r_u))
+    xdata = (preprocess_protein(res_l_u), preprocess_protein(res_r_u))
     labels = label_data(res_l_b, res_r_b, distance)
-    return x, labels
+    return xdata, labels
 
 
 def preprocess_file_and_write_data(name, filename, txn, idx=0, distance=6.):
@@ -236,12 +252,11 @@ def preprocess_file_and_write_data(name, filename, txn, idx=0, distance=6.):
     distance : float
         Distance max for two residues to interact.
     """
-    x, labels = preprocess_file(filename, distance=distance)
-    write_data(name, x, labels, txn, idx)
-    return
+    xdata, labels = preprocess_file(filename, distance=distance)
+    write_data(name, xdata, labels, txn, idx)
 
 
-def write_data(name, x, labels, txn, idx):
+def write_data(name, xdata, labels, txn, idx):
     """
     Write data input of the GNN and its labels.
     """
@@ -249,30 +264,29 @@ def write_data(name, x, labels, txn, idx):
     txn.put(prefix.encode(), name.encode())
     # Put ligand protein in file
     txn.put(SEP.join([prefix, L_ENC_ATOMS]).encode(),
-            x[0][0].tobytes())
+            xdata[0][0].tobytes())
     txn.put(SEP.join([prefix, L_ENC_RESIDUES]).encode(),
-            x[0][1].tobytes())
+            xdata[0][1].tobytes())
     txn.put(SEP.join([prefix, L_NEIGHBORS_IN]).encode(),
-            x[0][2].tobytes())
+            xdata[0][2].tobytes())
     txn.put(SEP.join([prefix, L_NEIGHBORS_OUT]).encode(),
-            x[0][3].tobytes())
+            xdata[0][3].tobytes())
     txn.put(SEP.join([prefix, L_RESIDUES]).encode(),
-            x[0][4].tobytes())
+            xdata[0][4].tobytes())
     # Put receptor protein in file
     txn.put(SEP.join([prefix, R_ENC_ATOMS]).encode(),
-            x[1][0].tobytes())
+            xdata[1][0].tobytes())
     txn.put(SEP.join([prefix, R_ENC_RESIDUES]).encode(),
-            x[1][1].tobytes())
+            xdata[1][1].tobytes())
     txn.put(SEP.join([prefix, R_NEIGHBORS_IN]).encode(),
-            x[1][2].tobytes())
+            xdata[1][2].tobytes())
     txn.put(SEP.join([prefix, R_NEIGHBORS_OUT]).encode(),
-            x[1][3].tobytes())
+            xdata[1][3].tobytes())
     txn.put(SEP.join([prefix, R_RESIDUES]).encode(),
-            x[1][4].tobytes())
+            xdata[1][4].tobytes())
     # Put labels in file
     txn.put(SEP.join([prefix, LABELS]).encode(), labels.tobytes())
-    return
-    
+
 
 def read_pdb_2prot_same_file(filename):
     """
@@ -289,7 +303,7 @@ def read_pdb_2prot_same_file(filename):
         The two proteins' chains.
     """
     parser = PDBParser()
-    with warnings.catch_warnings(record=True) as w:
+    with warnings.catch_warnings(record=True):
         structure = parser.get_structure("", filename)
     chains = list(structure.get_chains())
     return chains[0], chains[1]
@@ -312,17 +326,17 @@ def read_pdb_2prot_different_files(filename1, filename2):
         The two proteins' chains.
     """
     parser1, parser2 = PDBParser(), PDBParser()
-    with warnings.catch_warnings(record=True) as w:
+    with warnings.catch_warnings(record=True):
         structure1 = parser1.get_structure("", filename1)
-    with warnings.catch_warnings(record=True) as w:
+    with warnings.catch_warnings(record=True):
         structure2 = parser2.get_structure("", filename2)
 
     # Patches for problematic pdb files of the DBD5
-    if (os.path.basename(filename2).split('_')[0] == "1AZS"):
-        chains1 = next(structure1.get_chains())    
+    if os.path.basename(filename2).split('_')[0] == "1AZS":
+        chains1 = next(structure1.get_chains())
         chains2 = list(structure2.get_chains())[1]
     else:
-        chains1 = next(structure1.get_chains())    
+        chains1 = next(structure1.get_chains())
         chains2 = next(structure2.get_chains())
     return chains1, chains2
 
@@ -330,7 +344,7 @@ def read_pdb_2prot_different_files(filename1, filename2):
 def preprocess_file(filename, filename2=None, distance=6.):
     """
     Do the full preprocessing of a file containing 2 proteins.
-    
+
     The data input of the GNN is generated from the file, the residue
     number per atom for both proteins as well as the data label, that
     will be used as the target of the network.
@@ -355,10 +369,10 @@ def preprocess_file(filename, filename2=None, distance=6.):
     )
     residues1 = list(chain1.get_residues())
     residues2 = list(chain2.get_residues())
-    x = (preprocess_protein(residues1),
+    xdata = (preprocess_protein(residues1),
          preprocess_protein(residues2))
     target = label_data(residues1, residues2, distance)
-    return x, target
+    return xdata, target
 
 
 def preprocess_protein(residues):
@@ -380,17 +394,17 @@ def preprocess_protein(residues):
     atoms_resname = [atom.get_parent().get_resname() for atom in atoms]
     x_atoms = encode_protein_atoms(atoms).toarray()
     x_residues = encode_protein_residues(atoms_resname).toarray()
-    x_same_neigh, x_diff_neigh = encode_neighbors(atoms)        
+    x_same_neigh, x_diff_neigh = encode_neighbors(atoms)
     residues_names = np.array([i for i, residue in enumerate(residues)
                                for atom in residue.get_atoms()])
-    
+
     if len(set(residues_names)) != len(residues):
         logging.info(set(residues_names))
         logging.info([res.get_id()[1] for res in residues])
     assert len(set(residues_names)) == len(residues)
-    x = (x_atoms.astype(np.float32), x_residues.astype(np.float32),
-         x_same_neigh, x_diff_neigh, residues_names)
-    return x
+    xdata = (x_atoms.astype(np.float32), x_residues.astype(np.float32),
+             x_same_neigh, x_diff_neigh, residues_names)
+    return xdata
 
 
 def encode_protein_atoms(atoms):
@@ -461,7 +475,6 @@ def encode_neighbors(atoms, n_neighbors=10):
     # Process IDs for matching
     sources, destinations = neighbors[:, 0], neighbors[:, 1]
     atoms_id = np.array([atom.get_serial_number() for atom in atoms]).astype(int)
-    residues_id = np.array([atom.get_parent().get_id()[1] for atom in atoms]).astype(int)
 
     # Initialize the two neighbors list: in the same residue or out of it.
     neighbors_in = - np.ones((len(atoms), n_neighbors), dtype=int)
@@ -482,22 +495,22 @@ def encode_neighbors(atoms, n_neighbors=10):
         dest_index = np.where(dest_atom_id == atoms_id)[0][0]
 
         # We store the closest neighbors in a numpy array
-        
-        # Atoms are in the same residues 
-        if (src_residue_id == dest_residue_id):
-            if (indexes_in[src_index] < n_neighbors):
+
+        # Atoms are in the same residues
+        if src_residue_id == dest_residue_id:
+            if indexes_in[src_index] < n_neighbors:
                 neighbors_in[src_index][indexes_in[src_index]] = dest_index
                 indexes_in[src_index] += 1
-            if (indexes_in[dest_index] < n_neighbors):
+            if indexes_in[dest_index] < n_neighbors:
                 neighbors_in[dest_index][indexes_in[dest_index]] = src_index
                 indexes_in[dest_index] += 1
 
         # Atoms are in different residues
         else:
-            if (indexes_out[src_index] < n_neighbors):
+            if indexes_out[src_index] < n_neighbors:
                 neighbors_out[src_index][indexes_out[src_index]] = dest_index
                 indexes_out[src_index] += 1
-            if (indexes_out[dest_index] < n_neighbors):
+            if indexes_out[dest_index] < n_neighbors:
                 neighbors_out[dest_index][indexes_out[dest_index]] = src_index
                 indexes_out[dest_index] += 1
 
@@ -544,17 +557,19 @@ def label_data(residues1, residues2, limit=6.):
     return np.array(labels).astype(np.float32)
 
 
-def verify_data(x, labels):
+def verify_data(xdata, labels):
+    """
+    Verify that the dimensions of the data and of the labels match.
+    """
     nlabels = len(labels)
-    nligand = len(set(x[0][4]))
-    nreceptor = len(set(x[1][4]))
+    nligand = len(set(xdata[0][4]))
+    nreceptor = len(set(xdata[1][4]))
     if nlabels != nligand * nreceptor:
-        logging.info(f"Labels: {nlabels}")
-        logging.info(f"Ligand: {nligand}")
-        logging.info(f"Receptor: {nreceptor}")
-        logging.info(f"Data: {nligand * nreceptor}")
+        logging.info("Labels: %d", nlabels)
+        logging.info("Ligand: %d", nligand)
+        logging.info("Receptor: %d", nreceptor)
+        logging.info("Data: %d", nligand * nreceptor)
     assert nlabels == nligand * nreceptor
-    return
 
 
 def pdb2fasta(chain):
@@ -577,25 +592,28 @@ def pdb2fasta(chain):
 
 
 def _is_dir(parser, arg):
+    """
+    Verify that the argument is an existing directory.
+    """
     if not os.path.isdir(arg):
-        parser.error("The input directory %s does not exist!" % arg)
-    else:
-        return arg
+        parser.error(f"The input directory %s does not exist! {arg}")
+    return arg
 
 def _build_dir(parser, arg):
+    """
+    Build a new directory.
+    """
     if os.path.isdir(arg):
-        parser.error("The output directory already exist!" % arg)
+        parser.error(f"The output directory already exist! {arg}")
     else:
         os.makedirs(arg)
-        return arg
+    return arg
 
 
-def _group_per_residue(atoms_residue, x):
-    nresidue = len(set(atoms_residue))
-    idx = 0
+def _group_per_residue(atoms_residue, xdata):
     groups = []
     last_residue = -1
-    for residue_id, atom_data in zip(atoms_residue, x):
+    for residue_id, atom_data in zip(atoms_residue, xdata):
         if residue_id != last_residue:
             last_residue = residue_id
             groups.append([atom_data])

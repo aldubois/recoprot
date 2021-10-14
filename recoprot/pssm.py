@@ -24,7 +24,7 @@ def call_psiblast(sequence):
 
     Returns
     -------
-    
+
     """
     result = NCBIWWW.qblast(
         program="blastp",

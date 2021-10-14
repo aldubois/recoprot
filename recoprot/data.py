@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+"""
+Pytorch Datasets for training.
+"""
+
 import logging
 
 import numpy as np
@@ -34,7 +38,7 @@ from .symbols import (
 def read_full_db(txn):
     """
     Read all pairs of proteins from the LMDB file.
-    
+
     Parameters
     ----------
     txn : lmdb.Transaction
@@ -55,7 +59,7 @@ def read_full_db(txn):
 def read_protein_pair(txn, idx):
     """
     Read a pair of protein from the LMDB file.
-    
+
     Parameters
     ----------
     txn : lmdb.Transaction
@@ -75,39 +79,88 @@ def read_protein_pair(txn, idx):
     prefix = f"{idx}"
 
     name = txn.get(prefix.encode()).decode()
-    
-    l_enc_atoms = np.frombuffer(txn.get(SEP.join([prefix, L_ENC_ATOMS]).encode()), dtype=np.float32)
-    l_enc_residues = np.frombuffer(txn.get(SEP.join([prefix, L_ENC_RESIDUES]).encode()), dtype=np.float32)
-    l_neighbors_in = np.frombuffer(txn.get(SEP.join([prefix, L_NEIGHBORS_IN]).encode()), dtype=np.int64)
-    l_neighbors_out = np.frombuffer(txn.get(SEP.join([prefix, L_NEIGHBORS_OUT]).encode()), dtype=np.int64)
-    l_residues = np.frombuffer(txn.get(SEP.join([prefix, L_RESIDUES]).encode()), dtype=np.int64)
-    x1 = (
-        torch.from_numpy(np.copy(l_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS]))))),
-        torch.from_numpy(np.copy(l_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES]))))),
-        torch.from_numpy(np.copy(l_neighbors_in.reshape((-1, 10)))),
-        torch.from_numpy(np.copy(l_neighbors_out.reshape((-1, 10)))),
+
+    l_enc_atoms = np.frombuffer(
+        txn.get(SEP.join([prefix, L_ENC_ATOMS]).encode()),
+        dtype=np.float32
+    )
+    l_enc_residues = np.frombuffer(
+        txn.get(SEP.join([prefix, L_ENC_RESIDUES]).encode()),
+        dtype=np.float32
+    )
+    l_neighbors_in = np.frombuffer(
+        txn.get(SEP.join([prefix, L_NEIGHBORS_IN]).encode()),
+        dtype=np.int64
+    )
+    l_neighbors_out = np.frombuffer(
+        txn.get(SEP.join([prefix, L_NEIGHBORS_OUT]).encode()),
+        dtype=np.int64
+    )
+    l_residues = np.frombuffer(
+        txn.get(SEP.join([prefix, L_RESIDUES]).encode()),
+        dtype=np.int64
+    )
+    xdata1 = (
+        torch.from_numpy(np.copy(
+            l_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS])))
+        )),
+        torch.from_numpy(np.copy(
+            l_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES])))
+        )),
+        torch.from_numpy(np.copy(
+            l_neighbors_in.reshape((-1, 10))
+        )),
+        torch.from_numpy(np.copy(
+            l_neighbors_out.reshape((-1, 10))
+        )),
         torch.from_numpy(np.copy(l_residues))
     )
 
-    r_enc_atoms = np.frombuffer(txn.get(SEP.join([prefix, R_ENC_ATOMS]).encode()), dtype=np.float32)
-    r_enc_residues = np.frombuffer(txn.get(SEP.join([prefix, R_ENC_RESIDUES]).encode()), dtype=np.float32)
-    r_neighbors_in = np.frombuffer(txn.get(SEP.join([prefix, R_NEIGHBORS_IN]).encode()), dtype=np.int64)
-    r_neighbors_out = np.frombuffer(txn.get(SEP.join([prefix, R_NEIGHBORS_OUT]).encode()), dtype=np.int64)
-    r_residues = np.frombuffer(txn.get(SEP.join([prefix, R_RESIDUES]).encode()), dtype=np.int64)
-    x2 = (
-        torch.from_numpy(np.copy(r_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS]))))),
-        torch.from_numpy(np.copy(r_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES]))))),
-        torch.from_numpy(np.copy(r_neighbors_in.reshape((-1, 10)))),
-        torch.from_numpy(np.copy(r_neighbors_out.reshape((-1, 10)))),
+    r_enc_atoms = np.frombuffer(
+        txn.get(SEP.join([prefix, R_ENC_ATOMS]).encode()),
+        dtype=np.float32
+    )
+    r_enc_residues = np.frombuffer(
+        txn.get(SEP.join([prefix, R_ENC_RESIDUES]).encode()),
+        dtype=np.float32
+    )
+    r_neighbors_in = np.frombuffer(
+        txn.get(SEP.join([prefix, R_NEIGHBORS_IN]).encode()),
+        dtype=np.int64
+    )
+    r_neighbors_out = np.frombuffer(
+        txn.get(SEP.join([prefix, R_NEIGHBORS_OUT]).encode()),
+        dtype=np.int64
+    )
+    r_residues = np.frombuffer(
+        txn.get(SEP.join([prefix, R_RESIDUES]).encode()),
+        dtype=np.int64
+    )
+    xdata2 = (
+        torch.from_numpy(np.copy(
+            r_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS])))
+        )),
+        torch.from_numpy(np.copy(
+            r_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES])))
+        )),
+        torch.from_numpy(np.copy(
+            r_neighbors_in.reshape((-1, 10))
+        )),
+        torch.from_numpy(np.copy(
+            r_neighbors_out.reshape((-1, 10))
+        )),
         torch.from_numpy(np.copy(r_residues))
     )
 
-    labels = np.frombuffer(txn.get(SEP.join([prefix, LABELS]).encode()), dtype=np.float32)
+    labels = np.frombuffer(
+        txn.get(SEP.join([prefix, LABELS]).encode()),
+        dtype=np.float32
+    )
     labels = torch.from_numpy(np.copy(labels))
-    logging.info(f"Protein {name}")
+    logging.info("Protein %s", name)
     # assert len(labels) == len(set(x1[4])) * len(set(x2[4]))
-    return (x1, x2), labels
-    
+    return (xdata1, xdata2), labels
+
 
 class ProteinsDataset(Dataset):
 
@@ -116,27 +169,25 @@ class ProteinsDataset(Dataset):
     """
 
     PROT_NAMES = PROTEINS
-    
+
     def __init__(self, dbpath):
         self.env = lmdb.open(dbpath)
         self.start = PROTEINS.index(self.PROT_NAMES[0])
         self.stop = PROTEINS.index(self.PROT_NAMES[-1]) + 1
         self.size = self.stop - self.start
-        return
 
     def __getitem__(self, idx):
         if (idx < 0 or idx >= self.size):
             raise IndexError()
         with self.env.begin(write=False) as txn:
-            x, y = read_protein_pair(txn, self.start + idx)
-        return x, y
-        
+            xdata, ydata = read_protein_pair(txn, self.start + idx)
+        return xdata, ydata
+
     def __len__(self):
         return self.size
 
     def __del__(self):
         self.env.close()
-        return
 
 
 class TrainingDataset(ProteinsDataset):
@@ -144,7 +195,7 @@ class TrainingDataset(ProteinsDataset):
     Specific class for the training dataset.
     """
     PROT_NAMES = TRAINING
-    
+
 
 class ValidationDataset(ProteinsDataset):
     """
@@ -152,7 +203,7 @@ class ValidationDataset(ProteinsDataset):
     """
     PROT_NAMES = VALIDATION
 
-    
+
 class TestingDataset(ProteinsDataset):
     """
     Specific class for the testing dataset.
