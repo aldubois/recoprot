@@ -37,18 +37,18 @@ def test_train_no_batch():
         PROT_NAME, DATA_DIR, 6.)
 
     x = (
-        [torch.from_numpy(x_ref[0][0]),
-         torch.from_numpy(x_ref[0][1]),
-         torch.from_numpy(x_ref[0][2]),
-         torch.from_numpy(x_ref[0][3]),
-         torch.from_numpy(x_ref[0][4])],
-        [torch.from_numpy(x_ref[1][0]),
-         torch.from_numpy(x_ref[1][1]),
-         torch.from_numpy(x_ref[1][2]),
-         torch.from_numpy(x_ref[1][3]),
-         torch.from_numpy(x_ref[1][4])],
+        [torch.from_numpy(np.copy(x_ref[0][0])),
+         torch.from_numpy(np.copy(x_ref[0][1])),
+         torch.from_numpy(np.copy(x_ref[0][2])),
+         torch.from_numpy(np.copy(x_ref[0][3])),
+         torch.from_numpy(np.copy(x_ref[0][4]))],
+        [torch.from_numpy(np.copy(x_ref[1][0])),
+         torch.from_numpy(np.copy(x_ref[1][1])),
+         torch.from_numpy(np.copy(x_ref[1][2])),
+         torch.from_numpy(np.copy(x_ref[1][3])),
+         torch.from_numpy(np.copy(x_ref[1][4]))],
     )
-    labels = torch.from_numpy(labels_ref)
+    labels = torch.from_numpy(np.copy(labels_ref))
     
     # Build the dataset and it's loader (no batch)
     dataset = OneProteinDataset(x, labels)
