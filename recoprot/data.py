@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import logging
+
 import numpy as np
 import lmdb
 import torch
@@ -21,7 +23,11 @@ from .symbols import (
     R_NEIGHBORS_OUT,
     R_RESIDUES,
     LABELS,
-    N_PROTEINS
+    N_PROTEINS,
+    PROTEINS,
+    TRAINING,
+    VALIDATION,
+    TESTING
 )
 
 
@@ -68,6 +74,8 @@ def read_protein_pair(txn, idx):
     """
     prefix = f"{idx}"
 
+    name = txn.get(prefix.encode()).decode()
+    
     l_enc_atoms = np.frombuffer(txn.get(SEP.join([prefix, L_ENC_ATOMS]).encode()), dtype=np.float32)
     l_enc_residues = np.frombuffer(txn.get(SEP.join([prefix, L_ENC_RESIDUES]).encode()), dtype=np.float32)
     l_neighbors_in = np.frombuffer(txn.get(SEP.join([prefix, L_NEIGHBORS_IN]).encode()), dtype=np.int64)
@@ -96,6 +104,8 @@ def read_protein_pair(txn, idx):
 
     labels = np.frombuffer(txn.get(SEP.join([prefix, LABELS]).encode()), dtype=np.float32)
     labels = torch.from_numpy(np.copy(labels))
+    logging.info(f"Protein {name}")
+    # assert len(labels) == len(set(x1[4])) * len(set(x2[4]))
     return (x1, x2), labels
     
 
@@ -105,22 +115,46 @@ class ProteinsDataset(Dataset):
     Dataset for proteins pairs.
     """
 
+    PROT_NAMES = PROTEINS
+    
     def __init__(self, dbpath):
         self.env = lmdb.open(dbpath)
-        with self.env.begin(write=False) as txn:
-            self.size = int(txn.get(N_PROTEINS.encode()).decode())
+        self.start = PROTEINS.index(self.PROT_NAMES[0])
+        self.stop = PROTEINS.index(self.PROT_NAMES[-1]) + 1
+        self.size = self.stop - self.start
         return
 
     def __getitem__(self, idx):
         if (idx < 0 or idx >= self.size):
             raise IndexError()
         with self.env.begin(write=False) as txn:
-            x, y = read_protein_pair(txn, idx)
+            x, y = read_protein_pair(txn, self.start + idx)
         return x, y
         
-    def __len__(self, value=None):
+    def __len__(self):
         return self.size
 
     def __del__(self):
         self.env.close()
         return
+
+
+class TrainingDataset(ProteinsDataset):
+    """
+    Specific class for the training dataset.
+    """
+    PROT_NAMES = TRAINING
+    
+
+class ValidationDataset(ProteinsDataset):
+    """
+    Specific class for the validation dataset.
+    """
+    PROT_NAMES = VALIDATION
+
+    
+class TestingDataset(ProteinsDataset):
+    """
+    Specific class for the testing dataset.
+    """
+    PROT_NAMES = TESTING

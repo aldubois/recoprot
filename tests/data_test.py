@@ -10,20 +10,34 @@ import torch
 from .context import recoprot
 
 
-DATA_FILE = "tests/data/same_file/model.000.00.pdb"
+
+DATA_DIR = "tests/data/diff_file"
+PROT_NAME = "1A2K"
+
+class OneProteinDataset(recoprot.ProteinsDataset):
+    PROT_NAMES = [PROT_NAME]
+    
 
 def test_read_write_data():
 
-    x_ref, labels_ref = recoprot.preprocess_file(DATA_FILE, distance=18)
+    """
+    Test read/write of the LMDB.
+    """
+    
+    x_ref, labels_ref = recoprot.preprocess_ligand_receptor_bound_unbound(
+        PROT_NAME, DATA_DIR, 6.)
 
     envw = lmdb.open('/tmp/test', max_dbs=2)
     with envw.begin(write=True) as txn:
         txn.put(recoprot.N_PROTEINS.encode(), str(1).encode())
-        recoprot.preprocess_file_and_write_data(DATA_FILE, txn, idx=0, distance=18)
+        recoprot.preprocess_protein_bound_unbound(
+            PROT_NAME, txn, DATA_DIR,
+            idx=recoprot.PROTEINS.index(PROT_NAME)
+        )
     envw.close()
 
 
-    loader = recoprot.ProteinsDataset("/tmp/test")
+    loader = OneProteinDataset("/tmp/test")
     assert(len(loader) == 1)
     x_calc, labels_calc = loader[0]
 

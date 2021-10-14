@@ -94,7 +94,7 @@ class NoConv(torch.nn.Module):
         """
         for fc in self.fcs[:-1]:
             x = torch.nn.functional.relu(fc(x))
-        return torch.sigmoid(self.fcs[-1](x))
+        return self.fcs[-1](x)
 
 
 

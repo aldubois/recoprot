@@ -76,7 +76,7 @@ def preprocess(options):
             for i, fname in enumerate(files):
                 logging.info(f"{i+1}/{len(files)} : Preprocessing "
                              f"file {os.path.basename(fname)}.")
-                preprocess_file_and_write_data(fname, txn, idx=i)
+                preprocess_file_and_write_data(os.path.basename(fname), fname, txn, idx=i)
 
     else:
         with envw.begin(write=True) as txn:
@@ -160,31 +160,62 @@ def parse_args():
 
 def preprocess_protein_bound_unbound(protein_name, txn, directory, idx=0, distance=6.):
     
-    fname_l_bound = os.path.join(directory, BOUND_LIGAND.format(protein_name))
-    fname_r_bound = os.path.join(directory, BOUND_RECEPTOR.format(protein_name))
-    fname_l_unbound = os.path.join(directory, UNBOUND_LIGAND.format(protein_name))
-    fname_r_unbound = os.path.join(directory, UNBOUND_RECEPTOR.format(protein_name))
-
-    bound_chain1, bound_chain2 = read_pdb_2prot_different_files(fname_l_bound, fname_r_bound)
-    unbound_chain1, unbound_chain2 = read_pdb_2prot_different_files(fname_l_unbound, fname_r_unbound)
-
-    bound_res1 = list(bound_chain1.get_residues())
-    bound_res2 = list(bound_chain2.get_residues())
-    unbound_res1 = list(unbound_chain1.get_residues())
-    unbound_res2 = list(unbound_chain2.get_residues())
-
-    logging.info(f"    Ligand:")
-    bound_res1, unbound_res1 = align_proteins_residues(bound_res1, unbound_res1)
-    logging.info(f"    Receptor:")
-    bound_res2, unbound_res2 = align_proteins_residues(bound_res2, unbound_res2)
-    x = (preprocess_protein(unbound_res1), preprocess_protein(unbound_res2))
-    labels = label_data(bound_res1, bound_res2, distance)
-    write_data(x, labels, txn, idx)
+    x, labels = preprocess_ligand_receptor_bound_unbound(
+        protein_name,
+        directory,
+        distance
+    )
+    verify_data(x, labels)
+    write_data(protein_name, x, labels, txn, idx)
     print()
     return
 
 
-def preprocess_file_and_write_data(filename, txn, idx=0, distance=6.):
+def preprocess_ligand_receptor_bound_unbound(name, folder, distance):
+    """
+    Preprocessing of ligand and receptor with bound and unbound structures.
+
+    Parameters
+    ----------
+    name : str
+        Protein name.
+    folder : str
+        Path to the PDB files directory.
+    distance : float
+        Limit distance for two residues to interact together.
+
+    Returns
+    -------
+    x : tuple
+        Input of the GNN.
+    labels : torch.tensor
+        Target for the GNN.
+    """
+    fname_l_b = os.path.join(folder, BOUND_LIGAND.format(name))
+    fname_r_b = os.path.join(folder, BOUND_RECEPTOR.format(name))
+    fname_l_u = os.path.join(folder, UNBOUND_LIGAND.format(name))
+    fname_r_u = os.path.join(folder, UNBOUND_RECEPTOR.format(name))
+
+    chain_l_b, chain_r_b = read_pdb_2prot_different_files(fname_l_b, fname_r_b)
+    chain_l_u, chain_r_u = read_pdb_2prot_different_files(fname_l_u, fname_r_u)
+
+    res_l_b = list(chain_l_b.get_residues())
+    res_r_b = list(chain_r_b.get_residues())
+    res_l_u = list(chain_l_u.get_residues())
+    res_r_u = list(chain_r_u.get_residues())
+
+    logging.info(f"    Ligand:")
+    res_l_b, res_l_u = align_proteins_residues(res_l_b, res_l_u)
+
+    logging.info(f"    Receptor:")
+    res_r_b, res_r_u = align_proteins_residues(res_r_b, res_r_u)
+
+    x = (preprocess_protein(res_l_u), preprocess_protein(res_r_u))
+    labels = label_data(res_l_b, res_r_b, distance)
+    return x, labels
+
+
+def preprocess_file_and_write_data(name, filename, txn, idx=0, distance=6.):
     """
     Do the full preprocessing of a file containing 2 proteins.
 
@@ -206,15 +237,16 @@ def preprocess_file_and_write_data(filename, txn, idx=0, distance=6.):
         Distance max for two residues to interact.
     """
     x, labels = preprocess_file(filename, distance=distance)
-    write_data(x, labels, txn, idx)
+    write_data(name, x, labels, txn, idx)
     return
 
 
-def write_data(x, labels, txn, idx):
+def write_data(name, x, labels, txn, idx):
     """
     Write data input of the GNN and its labels.
     """
     prefix = f"{idx}"
+    txn.put(prefix.encode(), name.encode())
     # Put ligand protein in file
     txn.put(SEP.join([prefix, L_ENC_ATOMS]).encode(),
             x[0][0].tobytes())
@@ -348,9 +380,14 @@ def preprocess_protein(residues):
     atoms_resname = [atom.get_parent().get_resname() for atom in atoms]
     x_atoms = encode_protein_atoms(atoms).toarray()
     x_residues = encode_protein_residues(atoms_resname).toarray()
-    x_same_neigh, x_diff_neigh = encode_neighbors(atoms)
-    residues_names = np.array([atom.get_parent().get_id()[1]
-                               for atom in  atoms])
+    x_same_neigh, x_diff_neigh = encode_neighbors(atoms)        
+    residues_names = np.array([i for i, residue in enumerate(residues)
+                               for atom in residue.get_atoms()])
+    
+    if len(set(residues_names)) != len(residues):
+        logging.info(set(residues_names))
+        logging.info([res.get_id()[1] for res in residues])
+    assert len(set(residues_names)) == len(residues)
     x = (x_atoms.astype(np.float32), x_residues.astype(np.float32),
          x_same_neigh, x_diff_neigh, residues_names)
     return x
@@ -464,7 +501,6 @@ def encode_neighbors(atoms, n_neighbors=10):
                 neighbors_out[dest_index][indexes_out[dest_index]] = src_index
                 indexes_out[dest_index] += 1
 
-        
     return neighbors_in, neighbors_out
 
 
@@ -506,6 +542,19 @@ def label_data(residues1, residues2, limit=6.):
         else:
             labels.append(float(atom1 - atom2 < limit))
     return np.array(labels).astype(np.float32)
+
+
+def verify_data(x, labels):
+    nlabels = len(labels)
+    nligand = len(set(x[0][4]))
+    nreceptor = len(set(x[1][4]))
+    if nlabels != nligand * nreceptor:
+        logging.info(f"Labels: {nlabels}")
+        logging.info(f"Ligand: {nligand}")
+        logging.info(f"Receptor: {nreceptor}")
+        logging.info(f"Data: {nligand * nreceptor}")
+    assert nlabels == nligand * nreceptor
+    return
 
 
 def pdb2fasta(chain):

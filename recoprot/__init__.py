@@ -3,9 +3,12 @@
 import logging
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
+from .symbols import PROTEINS
 from .alignment import align_proteins_residues
 from .preprocess import (
     preprocess_file_and_write_data,
+    preprocess_ligand_receptor_bound_unbound,
+    preprocess_protein_bound_unbound,
     read_pdb_2prot_same_file,
     read_pdb_2prot_different_files,
     preprocess_file,
@@ -27,5 +30,10 @@ from .nn import (
     NoConv
 )
 from .pssm import call_psiblast
-from .data import ProteinsDataset
+from .data import (
+    ProteinsDataset,
+    TrainingDataset,
+    ValidationDataset,
+    TestingDataset
+)
 from .train import train

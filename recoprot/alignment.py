@@ -41,6 +41,7 @@ def align_proteins_residues(residues1, residues2):
     res2 = [residues2[i] for i in indices2]
     logging.info(f"        Alignment bound structure: {len(res1)} / {len(residues1)}.")
     logging.info(f"        Alignment unbound structure: {len(res2)} / {len(residues2)}.")
+    assert len(res1) == len(res2)
     return res1, res2
 
 

@@ -30,15 +30,21 @@ def train(network, dataset, n_epoch=10):
         List of the losses for each epoch.
     """
     model = network.to(DEVICE)
-    loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
-    train_step = make_train_step(model, loss_fn, optimizer)
     losses = []
+
+    # We rebalance each pair of proteins positive values
+    positive = 1.e-5
+    length = 0
+    for _, y in dataset:
+        positive += sum(y)
+        length += len(y)
+
+    loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=torch.tensor([length / positive]))
+    train_step = make_train_step(model, loss_fn, optimizer)
+
     for epoch in range(1, n_epoch + 1):
-        #for x, y in dataloader:
         for i, (x, y) in enumerate(dataset):
-            size1 = len(set([int(i) for i in x[0][4]]))
-            size2 = len(set([int(i) for i in x[1][4]]))
             loss = train_step(x, y)
         logging.info(f"Epoch {epoch:2d}/{n_epoch} -> loss = {loss}")
         losses.append(loss)
