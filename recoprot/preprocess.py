@@ -446,7 +446,7 @@ def encode_neighbors(atoms, n_neighbors=10):
     Parameters
     ----------
     atoms: Iterator of Bio.PDB.Atom.Atom
-        Liste d'atomes de la proteine avec leur positions.
+       Atoms list in the proteins (with their positions).
     n_neighbors : int
         Number of neighbors to consider.
     """
