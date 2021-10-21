@@ -15,7 +15,7 @@ import torch
 # Internals
 from .data import TrainingDataset, ValidationDataset
 from .nn import CompleteNetwork
-from .train import train
+from .train import train, evaluate
 
 
 class ExperimentOptions:
@@ -53,7 +53,10 @@ def experiment_main():
 
     # Validation
     validation_set = ValidationDataset(options.database)
-    validate(model, validation_set, options.limit)
+    logging.info("Validation set: ")
+    auc = evaluate(model, validation_set)
+    logging.info("    AUC: %.4f %%" % (auc))
+
 
 
 def parse_experiment_args():
@@ -96,7 +99,7 @@ def parse_experiment_args():
 
     args = parser.parse_args()
 
-    log_fmt = '%(levelname)s: %(message)s'
+    log_fmt = '%(levelname)7s: %(message)s'
     if args.log:
         logging.basicConfig(format=log_fmt, level=logging.INFO)
     else:
@@ -104,25 +107,6 @@ def parse_experiment_args():
     
     return ExperimentOptions(args.database, args.learning_rate,
                              args.n_epochs, args.limit)
-
-    
-def validate(model, dataset, limit=0.5):
-
-    positive = 0 
-    size = 0
-    
-    with torch.no_grad():
-        for xdata, target in dataset:
-            yhat = model(xdata)
-            calc = (yhat >= limit)
-            ref = target.bool()
-            positive += sum(ref == calc)
-            size += len(ref)
-
-    percent = positive * 100. / size
-    logging.info("Validation set: ")
-    logging.info("    Percentage of cases successfully predicted: %.2f %%" % (percent))
-    return
 
 
 def _learning_rate(x):

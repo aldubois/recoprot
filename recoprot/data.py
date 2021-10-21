@@ -155,7 +155,7 @@ def read_protein_pair(txn, idx):
         dtype=np.float32
     )
     labels = torch.from_numpy(np.copy(labels))
-    return (xdata1, xdata2), labels
+    return name, (xdata1, xdata2), labels
 
 
 class ProteinsDataset(Dataset):
@@ -176,8 +176,8 @@ class ProteinsDataset(Dataset):
         if (idx < 0 or idx >= self.size):
             raise IndexError()
         with self.env.begin(write=False) as txn:
-            xdata, ydata = read_protein_pair(txn, self.start + idx)
-        return xdata, ydata
+            name, xdata, ydata = read_protein_pair(txn, self.start + idx)
+        return name, xdata, ydata
 
     def __len__(self):
         return self.size

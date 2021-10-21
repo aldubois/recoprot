@@ -4,9 +4,15 @@
 Module to train the GNN.
 """
 
+# Python Standard
 import logging
-import torch
 
+# External dependencies
+import numpy as np
+import torch
+from sklearn.metrics import roc_auc_score
+
+# Internals
 from .symbols import DEVICE
 
 
@@ -35,7 +41,7 @@ def train(network, dataset, n_epoch, learning_rate, limit):
     # We rebalance each pair of proteins positive values
     positive = 1.e-5
     length = 0
-    for _, ydata in dataset:
+    for _, _, ydata in dataset:
         positive += sum(ydata)
         length += len(ydata)
 
@@ -46,37 +52,31 @@ def train(network, dataset, n_epoch, learning_rate, limit):
 
     for epoch in range(1, n_epoch + 1):
         logging.info("Epoch %2d/%d", epoch, n_epoch)
-        for xdata, ydata in dataset:
+        for _, xdata, ydata in dataset:
             loss = train_step(xdata, ydata)
         logging.info("     -> loss = %f", loss)
         losses.append(loss)
 
-    success = 0 
-    size = 0
-    
-    with torch.no_grad():
-        for xdata, target in dataset:
-            yhat = model(xdata)
-            calc = (yhat >= limit)
-            ref = target.bool()
-            success += sum(ref == calc)
-            size += len(ref)
-
-    percent = success * 100. / size
     logging.info("Training set: ")
-    logging.info("    Percentage of cases successfully predicted: %.2f %%" % (percent))
+    auc = evaluate(model, dataset)
+    logging.info("    AUC: %.4f" % (auc))
 
     return model
 
 
-def evaluate(model, training, validation, cut=0.5):
+def evaluate(model, dataset):
     """
-    Evaluate a model on the training and on the validation set.
+    Evaluate a model on a given dataset and return the mean AUC.
     """
-    for xdata, target in dataset:
-        ydata = model.forward(xdata)
-    
-    return
+    aucs = []
+    with torch.no_grad():
+        for idx, (name, xdata, target) in enumerate(dataset):
+            ydata = model.forward(xdata)
+            try:
+                aucs.append(roc_auc_score(target.numpy(), ydata.numpy()))
+            except ValueError:
+                logging.warning("    Complex %s discarded" % name)
+    return np.array(aucs).mean()
 
 
 def make_train_step(model, loss_fn, optimizer):
