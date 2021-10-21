@@ -4,8 +4,6 @@
 Pytorch Datasets for training.
 """
 
-import logging
-
 import numpy as np
 import lmdb
 import torch
@@ -157,8 +155,6 @@ def read_protein_pair(txn, idx):
         dtype=np.float32
     )
     labels = torch.from_numpy(np.copy(labels))
-    logging.info("Protein %s", name)
-    # assert len(labels) == len(set(x1[4])) * len(set(x2[4]))
     return (xdata1, xdata2), labels
 
 

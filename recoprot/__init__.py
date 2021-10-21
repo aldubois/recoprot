@@ -40,5 +40,6 @@ from .data import (
     TestingDataset
 )
 from .train import train
+from .experiment import experiment_main
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())

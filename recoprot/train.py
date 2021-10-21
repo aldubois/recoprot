@@ -10,7 +10,7 @@ import torch
 from .symbols import DEVICE
 
 
-def train(network, dataset, n_epoch=10):
+def train(network, dataset, n_epoch=50, learning_rate=0.001):
     """
     Training function for a GNN.
 
@@ -20,8 +20,6 @@ def train(network, dataset, n_epoch=10):
         Model to train.
     dataset : ProteinDataset
         Dataset to work on.
-    # dataloader : DataLoader
-    #     Dataset to train on.
     n_epoch : int
         Number of epochs.
 
@@ -47,12 +45,38 @@ def train(network, dataset, n_epoch=10):
     train_step = make_train_step(model, loss_fn, optimizer)
 
     for epoch in range(1, n_epoch + 1):
+        logging.info("Epoch %2d/%d", epoch, n_epoch)
         for xdata, ydata in dataset:
             loss = train_step(xdata, ydata)
-        logging.info("Epoch %2d/%d -> loss = %f", epoch, n_epoch, loss)
+        logging.info("     -> loss = %f", loss)
         losses.append(loss)
 
-    return losses
+    success = 0 
+    size = 0
+    
+    with torch.no_grad():
+        for xdata, target in dataset:
+            yhat = model(xdata)
+            calc = (yhat >= limit)
+            ref = target.bool()
+            success += sum(ref == calc)
+            size += len(ref)
+
+    percent = positive * 100. / size
+    log.info("Training set: ")
+    log.info("    Percentage of cases successfully predicted: %.2f %%" % (percent))
+
+    return model
+
+
+def evaluate(model, training, validation, cut=0.5):
+    """
+    Evaluate a model on the training and on the validation set.
+    """
+    for xdata, target in dataset:
+        ydata = model.forward(xdata)
+    
+    return
 
 
 def make_train_step(model, loss_fn, optimizer):
