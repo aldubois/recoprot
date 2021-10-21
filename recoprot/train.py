@@ -62,9 +62,9 @@ def train(network, dataset, n_epoch, learning_rate, limit):
             success += sum(ref == calc)
             size += len(ref)
 
-    percent = positive * 100. / size
-    log.info("Training set: ")
-    log.info("    Percentage of cases successfully predicted: %.2f %%" % (percent))
+    percent = success * 100. / size
+    logging.info("Training set: ")
+    logging.info("    Percentage of cases successfully predicted: %.2f %%" % (percent))
 
     return model
 

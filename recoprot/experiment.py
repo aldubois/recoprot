@@ -117,8 +117,8 @@ def validation(model, dataset, limit=0.5):
             size += len(ref)
 
     percent = positive * 100. / size
-    log.info("Validation set: ")
-    log.info("    Percentage of cases successfully predicted: %.2f %%" % (percent))
+    logging.info("Validation set: ")
+    logging.info("    Percentage of cases successfully predicted: %.2f %%" % (percent))
     return
 
 
