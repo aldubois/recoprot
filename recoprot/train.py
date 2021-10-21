@@ -10,7 +10,7 @@ import torch
 from .symbols import DEVICE
 
 
-def train(network, dataset, n_epoch=50, learning_rate=0.001):
+def train(network, dataset, n_epoch, learning_rate, limit):
     """
     Training function for a GNN.
 

@@ -17,15 +17,17 @@ from .train import train
 
 class ExperimentOptions:
 
-    def __init__(self, database, learning_rate, n_epochs):
+    def __init__(self, database, learning_rate, n_epochs, limit):
         self.database = database
         self.learning_rate = learning_rate
         self.n_epochs = n_epochs
+        self.limit = limit
         
     def __repr__(self):
         return (f"ExperimentOptions(database={self.database}"
                 f" learning_rate={self.learning_rate},"
-                f" n_epochs={self.n_epochs})")
+                f" n_epochs={self.n_epochs},"
+                f" limit={self.limit})")
         
 
 def experiment_main():
@@ -38,11 +40,17 @@ def experiment_main():
     # Training
     training_set = TrainingDataset(options.database)
     gnn = CompleteNetwork([128, 256])
-    model = train(gnn, training_set, options.n_epochs, options.learning_rate)
+    model = train(
+        gnn,
+        training_set,
+        options.n_epochs,
+        options.learning_rate,
+        options.limit
+    )
 
     # Validation
     validation_set = ValidationDataset(options.database)
-    validate(model, validation_set)
+    validate(model, validation_set, options.limit)
 
 
 def parse_experiment_args():
@@ -69,6 +77,13 @@ def parse_experiment_args():
         type=_n_epochs,
         help="Number of epochs for the training phase"
     )
+    parser.add_argument(
+        "-l", "--limit", default=0.5,
+        dest="limit",
+        type=_limit,
+        help=('Limit between 0. and 1. to consider that the'
+              ' residue pair interact with each other')
+    )
 
     # Optional arguments
     parser.add_argument("--info", dest="log",
@@ -84,7 +99,8 @@ def parse_experiment_args():
     else:
         logging.basicConfig(format=log_fmt)
     
-    return ExperimentOptions(args.database, args.learning_rate, args.n_epochs)
+    return ExperimentOptions(args.database, args.learning_rate,
+                             args.n_epochs, args.limit)
 
     
 def validation(model, dataset, limit=0.5):
@@ -142,3 +158,18 @@ def _n_epochs(x):
         raise argparse.ArgumentTypeError("%d isn't a positive number" % (x,))
     return x
     
+
+def _limit(x):
+    """
+    Verification of the learning rate argument.
+    """
+    try:
+        x = float(x)
+    except ValueError:
+        raise argparse.ArgumentTypeError("%r not a floating-point literal" % (x,))
+
+    if x < 0.0 or x > 1.0:
+        raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]"%(x,))
+    return x
+
+
