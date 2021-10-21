@@ -75,7 +75,7 @@ def evaluate(model, dataset):
             try:
                 aucs.append(roc_auc_score(target.numpy(), ydata.numpy()))
             except ValueError:
-                logging.warning("    Complex %s discarded" % name)
+                logging.warning("    Complex %s discarded because no positive sample." % name)
     return np.array(aucs).mean()
 
 
