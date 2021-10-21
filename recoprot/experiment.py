@@ -20,17 +20,15 @@ from .train import train, evaluate
 
 class ExperimentOptions:
 
-    def __init__(self, database, learning_rate, n_epochs, limit):
+    def __init__(self, database, learning_rate, n_epochs):
         self.database = database
         self.learning_rate = learning_rate
         self.n_epochs = n_epochs
-        self.limit = limit
         
     def __repr__(self):
         return (f"ExperimentOptions(database={self.database}"
                 f" learning_rate={self.learning_rate},"
-                f" n_epochs={self.n_epochs},"
-                f" limit={self.limit})")
+                f" n_epochs={self.n_epochs})")
         
 
 def experiment_main():
@@ -48,7 +46,6 @@ def experiment_main():
         training_set,
         options.n_epochs,
         options.learning_rate,
-        options.limit
     )
 
     # Validation
@@ -83,13 +80,6 @@ def parse_experiment_args():
         type=_n_epochs,
         help="Number of epochs for the training phase"
     )
-    parser.add_argument(
-        "-l", "--limit", default=0.5,
-        dest="limit",
-        type=_limit,
-        help=('Limit between 0. and 1. to consider that the'
-              ' residue pair interact with each other')
-    )
 
     # Optional arguments
     parser.add_argument("--info", dest="log",
@@ -105,8 +95,7 @@ def parse_experiment_args():
     else:
         logging.basicConfig(format=log_fmt)
     
-    return ExperimentOptions(args.database, args.learning_rate,
-                             args.n_epochs, args.limit)
+    return ExperimentOptions(args.database, args.learning_rate, args.n_epochs)
 
 
 def _learning_rate(x):
@@ -144,19 +133,3 @@ def _n_epochs(x):
     if x < 0.0:
         raise argparse.ArgumentTypeError("%d isn't a positive number" % (x,))
     return x
-    
-
-def _limit(x):
-    """
-    Verification of the learning rate argument.
-    """
-    try:
-        x = float(x)
-    except ValueError:
-        raise argparse.ArgumentTypeError("%r not a floating-point literal" % (x,))
-
-    if x < 0.0 or x > 1.0:
-        raise argparse.ArgumentTypeError("%r not in range [0.0, 1.0]"%(x,))
-    return x
-
-

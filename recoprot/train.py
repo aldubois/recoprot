@@ -16,7 +16,7 @@ from sklearn.metrics import roc_auc_score
 from .symbols import DEVICE
 
 
-def train(network, dataset, n_epoch, learning_rate, limit):
+def train(network, dataset, n_epoch, learning_rate):
     """
     Training function for a GNN.
 
