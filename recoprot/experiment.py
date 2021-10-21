@@ -9,6 +9,9 @@ import os
 import logging
 import argparse
 
+# External dependencies
+import torch
+
 # Internals
 from .data import TrainingDataset, ValidationDataset
 from .nn import CompleteNetwork
@@ -103,7 +106,7 @@ def parse_experiment_args():
                              args.n_epochs, args.limit)
 
     
-def validation(model, dataset, limit=0.5):
+def validate(model, dataset, limit=0.5):
 
     positive = 0 
     size = 0
