@@ -81,8 +81,8 @@ def experiment_main():
     
     for config in configurations:
         res = experiment(configurations.database, config)
+        df = df.append(res, ignore_index=True)
 
-    df = df.append(res, ignore_index=True)
     df.to_csv(output_file)
     return
         
