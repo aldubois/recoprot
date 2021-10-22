@@ -72,7 +72,7 @@ def evaluate(model, dataset):
         for idx, (name, xdata, target) in enumerate(dataset):
             ydata = model.forward(xdata)
             try:
-                aucs.append(roc_auc_score(target.numpy(), ydata.numpy()))
+                aucs.append(roc_auc_score(target.cpu().numpy(), ydata.cpu().numpy()))
             except ValueError:
                 logging.warning("    Complex %s discarded because no positive sample." % name)
     return np.array(aucs).mean() if len(aucs) else np.nan
