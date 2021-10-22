@@ -34,7 +34,7 @@ def train(model, dataset, n_epoch, learning_rate):
     losses : list of float
         List of the losses for each epoch.
     """
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     losses = []
 
     # We rebalance each pair of proteins positive values
@@ -55,10 +55,6 @@ def train(model, dataset, n_epoch, learning_rate):
             loss = train_step(xdata, ydata)
         logging.info("     -> loss = %f", loss)
         losses.append(loss)
-
-    logging.info("Training set: ")
-    auc = evaluate(model, dataset)
-    logging.info("    AUC: %.4f" % (auc))
 
     return losses
 

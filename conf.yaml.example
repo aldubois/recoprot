@@ -1,3 +1,5 @@
+database: /s/jawar/g/nobackup/alex/data
+
 n_epochs:
     - 25
     - 50

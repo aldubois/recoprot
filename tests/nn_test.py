@@ -27,6 +27,6 @@ def test_complete_network():
           torch.from_numpy(x[1][3]),
           x[1][4])
     )
-    nn = recoprot.CompleteNetwork([128, 256])
+    nn = recoprot.CompleteNetwork([128, 256, 512], [128, 256])
     res = nn.forward(x)
     return

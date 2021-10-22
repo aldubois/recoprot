@@ -21,16 +21,18 @@ class CompleteNetwork(torch.nn.Module):
     Complete neural network.
     """
 
-    def __init__(self, layers_sizes):
+    def __init__(self, conv_filters, dense_filters):
         """
         Parameters
         ----------
-        layers_sizes : list of integer
+        conv_filters : list of integer
+            Size of each convolution layers.        
+        dense_filters : list of integer
             Size of each fully connected layers.
         """
         super(CompleteNetwork, self).__init__()
-        self.conv = GNN()
-        self.fcs = NoConv(2*self.conv.filters[-1], layers_sizes)
+        self.conv = GNN(conv_filters)
+        self.fcs = NoConv(2*self.conv.filters[-1], dense_filters)
         return
 
     def forward(self, x):
@@ -231,7 +233,7 @@ class GNN(torch.nn.Module):
     """
     GNN module.
     """
-    def __init__(self, filters=[128, 256, 512]):
+    def __init__(self, filters):
         super().__init__()
         self.filters = filters
         if self.filters:
