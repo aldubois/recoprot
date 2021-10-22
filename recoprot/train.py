@@ -16,13 +16,13 @@ from sklearn.metrics import roc_auc_score
 from .symbols import DEVICE
 
 
-def train(network, dataset, n_epoch, learning_rate):
+def train(model, dataset, n_epoch, learning_rate):
     """
     Training function for a GNN.
 
     Parameters
     ----------
-    network : torch.nn.Module
+    model : torch.nn.Module
         Model to train.
     dataset : ProteinDataset
         Dataset to work on.
@@ -34,7 +34,6 @@ def train(network, dataset, n_epoch, learning_rate):
     losses : list of float
         List of the losses for each epoch.
     """
-    model = network.to(DEVICE)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
     losses = []
 
@@ -61,7 +60,7 @@ def train(network, dataset, n_epoch, learning_rate):
     auc = evaluate(model, dataset)
     logging.info("    AUC: %.4f" % (auc))
 
-    return model
+    return losses
 
 
 def evaluate(model, dataset):
@@ -76,7 +75,7 @@ def evaluate(model, dataset):
                 aucs.append(roc_auc_score(target.numpy(), ydata.numpy()))
             except ValueError:
                 logging.warning("    Complex %s discarded because no positive sample." % name)
-    return np.array(aucs).mean()
+    return np.array(aucs).mean() if len(aucs) else np.nan
 
 
 def make_train_step(model, loss_fn, optimizer):

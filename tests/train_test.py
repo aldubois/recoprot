@@ -17,7 +17,8 @@ PROT_NAME = "1A2K"
 
 class OneProteinDataset(Dataset):
 
-    def __init__(self, x, labels):
+    def __init__(self, name, x, labels):
+        self.name = name
         self.x = x
         self.labels = labels
         return
@@ -25,7 +26,7 @@ class OneProteinDataset(Dataset):
     def __getitem__(self, idx):
         if (idx != 0):
             raise IndexError()
-        return self.x, self.labels
+        return self.name, self.x, self.labels
         
     def __len__(self):
         return 1
@@ -51,7 +52,7 @@ def test_train_no_batch():
     labels = torch.from_numpy(labels_ref)
     
     # Build the dataset and it's loader (no batch)
-    dataset = OneProteinDataset(x, labels)
+    dataset = OneProteinDataset(PROT_NAME, x, labels)
 
     # Build the GNN
 
@@ -59,7 +60,8 @@ def test_train_no_batch():
     # Sometimes for some weight values the loss is at 0. and don't move so we repeat
     for _ in range(10):
         gnn = recoprot.CompleteNetwork([128, 256])
-        losses = recoprot.train(gnn, dataset, 2)
+        model = gnn.to(recoprot.DEVICE)
+        losses = recoprot.train(model, dataset, 2, 0.001)
         if losses[0] != 0.:
             break
     assert losses[0] != losses[1]

@@ -39,8 +39,9 @@ def test_read_write_data():
 
     loader = OneProteinDataset("/tmp/test")
     assert(len(loader) == 1)
-    x_calc, labels_calc = loader[0]
+    name_calc, x_calc, labels_calc = loader[0]
 
+    assert name_calc == PROT_NAME
     assert (x_ref[0][0] == x_calc[0][0].numpy()).all()
     assert (x_ref[0][1] == x_calc[0][1].numpy()).all()
     assert (x_ref[0][2] == x_calc[0][2].numpy()).all()

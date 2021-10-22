@@ -13,6 +13,7 @@ import argparse
 import torch
 
 # Internals
+from .symbols import DEVICE
 from .data import TrainingDataset, ValidationDataset
 from .nn import CompleteNetwork
 from .train import train, evaluate
@@ -41,8 +42,9 @@ def experiment_main():
     # Training
     training_set = TrainingDataset(options.database)
     gnn = CompleteNetwork([128, 256])
-    model = train(
-        gnn,
+    model = gnn.to(DEVICE)
+    losses = train(
+        model,
         training_set,
         options.n_epochs,
         options.learning_rate,

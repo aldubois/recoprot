@@ -129,9 +129,9 @@ class GNN_Layer(torch.nn.Module):
         return
 
     def forward(self, x):
-        return self._forward_one_protein(x[0]), self._forward_one_protein(x[1])
+        return self._forward_protein(x[0]), self._forward_protein(x[1])
 
-    def _forward_one_protein(self, x):
+    def _forward_protein(self, x):
         Z, same_neigh,diff_neigh = x
         Z = Z.to(DEVICE)
         node_signals = Z @ self.Wsv
@@ -200,9 +200,9 @@ class GNN_First_Layer(torch.nn.Module):
         """
         Forward function of the module.
         """
-        return self._forward_one_protein(xdata[0]), self._forward_one_protein(xdata[1])
+        return self._forward_protein(xdata[0]), self._forward_protein(xdata[1])
 
-    def _forward_one_protein(self, xdata):
+    def _forward_protein(self, xdata):
         atoms, residues, same_neigh, diff_neigh, _ = xdata
         atoms = atoms.to(DEVICE)
         residues = residues.to(DEVICE)
@@ -231,17 +231,16 @@ class GNN(torch.nn.Module):
     """
     GNN module.
     """
-    def __init__(self, first_layer_filters=128, other_layers_filters=(256, 512)):
+    def __init__(self, filters=[128, 256, 512]):
         super().__init__()
-        self.filters = [first_layer_filters, *other_layers_filters]
-        convs = [GNN_First_Layer(filters=first_layer_filters)]
-        if other_layers_filters:
-            inout_features = [(first_layer_filters, other_layers_filters[0])]
-            for inout_feature in zip(other_layers_filters[:-1], other_layers_filters[1:]):
-                inout_features.append(inout_feature)
-            for v_feats, filters in inout_features:
-                convs.append(GNN_Layer(v_feats=v_feats, filters=filters))
-            self.convs = torch.nn.Sequential(*convs)
+        self.filters = filters
+        if self.filters:
+            convs = [GNN_First_Layer(filters=self.filters[0])]
+            if len(self.filters) >= 1:
+                inout = [feature for feature in zip(self.filters[:-1], self.filters[1:])]
+                for v_feats, filts in inout:
+                    convs.append(GNN_Layer(v_feats=v_feats, filters=filts))
+                self.convs = torch.nn.Sequential(*convs)
 
     def forward(self, xdata):
         """
