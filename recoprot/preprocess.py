@@ -227,7 +227,7 @@ def preprocess_ligand_receptor_bound_unbound(name, folder, distance):
     res_r_b, res_r_u = align_proteins_residues(res_r_b, res_r_u)
 
     xdata = (preprocess_protein(res_l_u), preprocess_protein(res_r_u))
-    labels = label_data(res_l_b, res_r_b, distance)
+    labels = compute_alpha_carbon_distance(res_l_b, res_r_b)
     return xdata, labels
 
 
@@ -536,8 +536,12 @@ def label_data(residues1, residues2, limit=6.):
         For each pair of residue, indicate if the two
         residues interact with each other.
     """
+    return (compute_alpha_carbon_distance(residues1, residues2) <= limit).astype(np.float32)
+
+
+def compute_alpha_carbon_distance(residues1, residues2):
     # Get the residues number per atom
-    labels = []
+    distances = []
     alpha_carbon = "CA"
     for residue1, residue2 in product(residues1, residues2):
         atom1 = None
@@ -551,11 +555,11 @@ def label_data(residues1, residues2, limit=6.):
                 atom2 = atom
                 break
         if (atom1 is None) or (atom2 is None):
-            labels.append(float(False))
+            distances.append(np.Inf)
         else:
-            labels.append(float(atom1 - atom2 < limit))
-    return np.array(labels).astype(np.float32)
-
+            distances.append(atom1 - atom2)
+    return np.array(distances).astype(np.float32)
+    
 
 def verify_data(xdata, labels):
     """
