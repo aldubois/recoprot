@@ -35,6 +35,7 @@ def train(model, dataset, n_epoch, learning_rate):
         List of the losses for each epoch.
     """
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
     losses = []
 
     # We rebalance each pair of proteins positive values
@@ -53,6 +54,7 @@ def train(model, dataset, n_epoch, learning_rate):
         logging.info("Epoch %2d/%d", epoch, n_epoch)
         for _, xdata, ydata in dataset:
             loss = train_step(xdata, ydata)
+        scheduler.step()
         logging.info("     -> loss = %f", loss)
         losses.append(loss)
 
