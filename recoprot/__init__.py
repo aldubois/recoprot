@@ -34,6 +34,7 @@ from .nn import (
 )
 from .pssm import call_psiblast
 from .data import (
+    build_targets,
     ProteinsDataset,
     TrainingDataset,
     ValidationDataset,

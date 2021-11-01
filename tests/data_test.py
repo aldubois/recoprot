@@ -54,6 +54,6 @@ def test_read_write_data():
     assert (x_ref[1][3] == x_calc[1][3].numpy()).all()
     assert (torch.from_numpy(np.copy(x_ref[1][4])) == x_calc[1][4]).all()
 
-    assert (labels_ref == labels_calc.numpy()).all()
+    assert ((labels_ref <= 6.) == labels_calc[0].numpy()).all()
     return
 
