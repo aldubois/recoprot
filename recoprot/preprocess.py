@@ -188,7 +188,9 @@ class Preprocessor:
             )
             self.model = self.model.to(DEVICE)
             self.model = self.model.eval()
-
+        else:
+            self.tokenizer = None
+            self.model = None
             
     def write_context(self, txn):
         size = len(self.options.proteins)
@@ -213,7 +215,9 @@ class Preprocessor:
         xdata, labels = Preprocessor._preprocess_structure(
             pname,
             self.options.inp,
-            self.options.protbert
+            self.options.protbert,
+            self.tokenizer,
+            self.model
         )
         Preprocessor._verify_data(xdata, labels)
         Preprocessor._write_data(pname, xdata, labels, txn, i)
@@ -221,7 +225,7 @@ class Preprocessor:
 
         
     @staticmethod
-    def _preprocess_structure(name, folder, protbert=False):
+    def _preprocess_structure(name, folder, tokenizer=None, model=None):
         """
         Preprocessing of ligand and receptor with
         bound and unbound structures.
@@ -258,8 +262,8 @@ class Preprocessor:
         logging.info("    Receptor:")
         res_r_b, res_r_u = align_proteins_residues(res_r_b, res_r_u)
 
-        xdata = (Preprocessor._preprocess_protein(res_l_u, protbert),
-                 Preprocessor._preprocess_protein(res_r_u, protbert))
+        xdata = (Preprocessor._preprocess_protein(res_l_u, tokenizer, model),
+                 Preprocessor._preprocess_protein(res_r_u, tokenizer, model))
         labels = Preprocessor._compute_alpha_carbon_distance(res_l_b, res_r_b)
         return xdata, labels
 
@@ -298,7 +302,7 @@ class Preprocessor:
 
     
     @staticmethod
-    def _preprocess_protein(residues, protbert=False):
+    def _preprocess_protein(residues, tokenizer, model):
         """
         Preprocess a protein chain to the input data format of the GNN.
         
@@ -323,8 +327,8 @@ class Preprocessor:
         ]
         x_atoms = Preprocessor._encode_protein_atoms(atoms).toarray()
         x_residues = (
-            Preprocessor._call_protbert(atoms_resname)
-            if protbert
+            Preprocessor._call_protbert(atoms_resname, tokenizer, model)
+            if tokenizer is not None and model is not None
             else Preprocessor._encode_protein_residues(atoms_resname).toarray()
         )
         x_same_neigh, x_diff_neigh = Preprocessor._encode_neighbors(atoms)
@@ -400,6 +404,39 @@ class Preprocessor:
         )
         return encoded_residues
 
+    @staticmethod
+    def _call_protbert(residues, tokenizer, model):
+        """
+        Create the ProtBert features from the list of residues name.
+        
+        Parameters
+        ----------
+        residues: list of str
+            List of residue name per atom in a protein.
+
+        Returns
+        -------
+        np.ndarray : np.ndarray
+            ProtBert features.
+        """
+        categories = np.array(CATEGORIES[RESIDUES]).reshape(-1, 1)
+        categorized_residues = " ".join([
+            residue if residue in categories else '1'
+            for residue in residues
+        ])
+        ids = tokenizer(
+            categorized_residues,
+            add_special_tokens=True,
+            pad_to_max_length=True
+        )
+        input_ids = torch.tensor(ids['input_ids']).to(device)
+        attention_mask = torch.tensor(ids['attention_mask']).to(device)
+        with torch.no_grad():
+            embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
+        embedding = embedding.cpu().numpy()
+        seq_len = (attention_mask == 1).sum()
+        return embedding[1:seq_len-1]
+        
 
     @staticmethod
     def _compute_alpha_carbon_distance(residues1, residues2):
