@@ -1,3 +1,5 @@
+bert: False
+
 database: /s/jawar/g/nobackup/alex/data
 
 n_epochs:

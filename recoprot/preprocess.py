@@ -426,16 +426,17 @@ class Preprocessor:
         ])
         ids = tokenizer(
             categorized_residues,
-            add_special_tokens=True,
-            pad_to_max_length=True
+            # add_special_tokens=True,
+            # pad_to_max_length=True,
+            return_tensors="pt"
         )
-        input_ids = torch.tensor(ids['input_ids']).to(device)
-        attention_mask = torch.tensor(ids['attention_mask']).to(device)
+        input_ids = ids['input_ids'].to(DEVICE)
+        attention_mask = ids['attention_mask'].to(DEVICE)
         with torch.no_grad():
             embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
         embedding = embedding.cpu().numpy()
-        seq_len = (attention_mask == 1).sum()
-        return embedding[1:seq_len-1]
+        print(embedding.shape)
+        return embedding.reshape((embedding.shape[1], embedding.shape[2]))[1:-1]
         
 
     @staticmethod

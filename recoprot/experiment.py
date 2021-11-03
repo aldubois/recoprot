@@ -22,6 +22,7 @@ from .data import TrainingDataset, ValidationDataset
 from .nn import CompleteNetwork
 from .train import train, evaluate
 
+BERT = "bert"
 DB = "database"
 N_EPOCHS = "n_epochs"
 LR = "learning_rate"
@@ -38,7 +39,7 @@ DF_AUC_VALIDATION = "AUC Validation"
 DF_COLUMNS = [DF_N_EPOCHS, DF_LR, DF_CONV, DF_DENSE, DF_AUC_TRAINING, DF_AUC_VALIDATION]
 
 
-Configuration = namedtuple("Configuration", ["n_epochs", "lr", "convs", "dense"])
+Configuration = namedtuple("Configuration", ["bert", "n_epochs", "lr", "convs", "dense"])
 
 
 class Configurations:
@@ -47,6 +48,7 @@ class Configurations:
     Experiences configurations for each hyperparameters.
     """
     def __init__(self, data):
+        self.bert = data[BERT]
         self.database = data[DB]
         self.n_epochs = data[N_EPOCHS]
         self.learning_rates = data[LR]
@@ -54,7 +56,8 @@ class Configurations:
         self.dense_filters = data[DENSE]
 
     def __repr__(self):
-        return (f"Configurations(database={self.database}"
+        return (f"Configurations(bert=self.bert"
+                f"database={self.database}"
                 f" n_epochs={self.n_epochs},"
                 f" learning_rates={self.learning_rates},"
                 f" conv_filters={self.conv_filters},"
@@ -63,7 +66,8 @@ class Configurations:
     def __iter__(self):
         return (
             Configuration(*data)
-            for data in product(self.n_epochs,
+            for data in product([self.bert],
+                                self.n_epochs,
                                 self.learning_rates,
                                 self.conv_filters,
                                 self.dense_filters)
@@ -90,7 +94,7 @@ def experiment_main():
 def experiment(database, config):
     # Training
     training_set = TrainingDataset(database)
-    gnn = CompleteNetwork(config.convs, config.dense)
+    gnn = CompleteNetwork(config.convs, config.dense, config.bert)
     model = gnn.to(DEVICE)
     losses = train(
         model,

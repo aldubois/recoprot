@@ -20,7 +20,7 @@ class CompleteNetwork(torch.nn.Module):
     Complete neural network.
     """
 
-    def __init__(self, conv_filters, dense_filters):
+    def __init__(self, conv_filters, dense_filters, bert):
         """
         Parameters
         ----------
@@ -28,9 +28,11 @@ class CompleteNetwork(torch.nn.Module):
             Size of each convolution layers.        
         dense_filters : list of integer
             Size of each fully connected layers.
+        bert : bool
+            If Bert was used to pretrain the data input.
         """
         super(CompleteNetwork, self).__init__()
-        self.conv = GNN(conv_filters)
+        self.conv = GNN(conv_filters, bert)
         self.fcs = NoConv(2*self.conv.filters[-1], dense_filters)
         return
 
@@ -157,7 +159,7 @@ class GNN_Layer(torch.nn.Module):
 
 class GNN_First_Layer(torch.nn.Module):
 
-    def __init__(self, filters, trainable=True, n_neighbors=10, **kwargs):
+    def __init__(self, filters, bert, trainable=True, n_neighbors=10, **kwargs):
 
         super(GNN_First_Layer, self).__init__()
         self.filters = filters
@@ -173,7 +175,7 @@ class GNN_First_Layer(torch.nn.Module):
         )
         self.Wr = torch.nn.Parameter(
             torch.randn(
-                len(CATEGORIES["residues"]),
+                1024 if bert else len(CATEGORIES["residues"]),
                 self.filters,
                 device=DEVICE,
                 requires_grad=True
@@ -232,11 +234,11 @@ class GNN(torch.nn.Module):
     """
     GNN module.
     """
-    def __init__(self, filters):
+    def __init__(self, filters, bert):
         super().__init__()
         self.filters = filters
         if self.filters:
-            convs = [GNN_First_Layer(filters=self.filters[0])]
+            convs = [GNN_First_Layer(filters=self.filters[0], bert=bert)]
             if len(self.filters) >= 1:
                 inout = [feature for feature in zip(self.filters[:-1], self.filters[1:])]
                 for v_feats, filts in inout:

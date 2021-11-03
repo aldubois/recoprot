@@ -8,6 +8,7 @@ import lmdb
 import numpy as np
 import torch
 from torch.utils.data import Dataset
+from transformers import BertModel, BertTokenizer
 
 from .context import recoprot
 
@@ -69,7 +70,16 @@ def test_train_no_batch():
 
 def test_train_no_batch_bert():
 
-    x_ref, labels_ref = recoprot.Preprocessor._preprocess_structure(PROT_NAME, DATA_DIR, True)
+    tokenizer = BertTokenizer.from_pretrained(
+        "Rostlab/prot_bert",
+        do_lower_case=False
+    )
+    model = BertModel.from_pretrained(
+        "Rostlab/prot_bert"
+    )
+    model = model.to(recoprot.DEVICE)
+    model = model.eval()
+    x_ref, labels_ref = recoprot.Preprocessor._preprocess_structure(PROT_NAME, DATA_DIR, tokenizer, model)
 
     x = (
         [torch.from_numpy(x_ref[0][0]),
@@ -93,7 +103,7 @@ def test_train_no_batch_bert():
     # Train for 2 epochs
     # Sometimes for some weight values the loss is at 0. and don't move so we repeat
     for _ in range(10):
-        gnn = recoprot.CompleteNetwork([128, 256, 512], [128, 256])
+        gnn = recoprot.CompleteNetwork([128, 256, 512], [128, 256], True)
         model = gnn.to(recoprot.DEVICE)
         losses = recoprot.train(model, dataset, 2, 0.001)
         if losses[0] != 0.:
