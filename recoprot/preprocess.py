@@ -59,7 +59,7 @@ def preprocess_main():
     """
     Main function for setuptools entrypoint.
     """
-    options = Options.parse_args()
+    options = PreprocessorOptions.parse_args()
     preprocess(options)
 
 
