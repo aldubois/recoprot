@@ -77,6 +77,8 @@ def preprocess(options):
     with envw.begin(write=True) as txn:
         preprocess.write_context(txn)
         for i, pname in enumerate(options.proteins):
+            logging.info("%d/%d : Preprocessing protein %s",
+                         i + 1, len(PROTEINS), pname)            
             preprocess.preprocess(pname, txn, i)
     envw.close()
 
