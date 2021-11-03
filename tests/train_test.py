@@ -49,10 +49,10 @@ def test_train_no_batch():
          torch.from_numpy(x_ref[1][3]),
          torch.from_numpy(x_ref[1][4])],
     )
-    labels = torch.from_numpy(labels_ref)
+    targets = recoprot.build_targets(labels_ref)
     
     # Build the dataset and it's loader (no batch)
-    dataset = OneProteinDataset(PROT_NAME, x, labels)
+    dataset = OneProteinDataset(PROT_NAME, x, targets)
 
     # Build the GNN
 

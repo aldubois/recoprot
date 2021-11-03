@@ -150,13 +150,24 @@ def read_protein_pair(txn, idx):
         torch.from_numpy(np.copy(r_residues))
     )
 
-    labels = np.frombuffer(
+    distances = np.frombuffer(
         txn.get(SEP.join([prefix, LABELS]).encode()),
         dtype=np.float32
     )
-    labels = torch.from_numpy(np.copy(labels))
-    return name, (xdata1, xdata2), labels
+    targets = build_targets(distances)
+    return name, (xdata1, xdata2), targets
 
+
+def build_targets(distances):
+    # The label is 1
+    labels = (distances <= 6.)
+    cases = labels | (distances > 7.)
+    labels = labels.astype(np.float32)
+    pos_weight = sum(cases) / (sum(labels) + 1)
+    weights = (pos_weight - 1) * labels + cases
+    targets = torch.from_numpy(labels), torch.from_numpy(weights)
+    return targets
+    
 
 class ProteinsDataset(Dataset):
 

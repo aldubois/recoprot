@@ -35,24 +35,16 @@ def train(model, dataset, n_epoch, learning_rate):
         List of the losses for each epoch.
     """
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
     losses = []
 
-    # We rebalance each pair of proteins positive values
-    positive = 1.e-5
-    length = 0
-    for _, _, ydata in dataset:
-        positive += sum(ydata)
-        length += len(ydata)
-
-    loss_fn = torch.nn.BCEWithLogitsLoss(
-        pos_weight=torch.tensor([length / positive]).to(DEVICE)
-    )
-    train_step = make_train_step(model, loss_fn, optimizer)
+    train_step = make_train_step(model, optimizer)
 
     for epoch in range(1, n_epoch + 1):
         logging.info("Epoch %2d/%d", epoch, n_epoch)
         for _, xdata, ydata in dataset:
             loss = train_step(xdata, ydata)
+        scheduler.step()
         logging.info("     -> loss = %f", loss)
         losses.append(loss)
 
@@ -68,13 +60,13 @@ def evaluate(model, dataset):
         for idx, (name, xdata, target) in enumerate(dataset):
             ydata = model.forward(xdata)
             try:
-                aucs.append(roc_auc_score(target.cpu().numpy(), ydata.cpu().numpy()))
+                aucs.append(roc_auc_score(target[0].cpu().numpy(), ydata.cpu().numpy()))
             except ValueError:
                 logging.warning("    Complex %s discarded because no positive sample." % name)
     return np.array(aucs).mean() if len(aucs) else np.nan
 
 
-def make_train_step(model, loss_fn, optimizer):
+def make_train_step(model, optimizer):
     """
     Builds function that performs a step in the train loop.
 
@@ -87,9 +79,13 @@ def make_train_step(model, loss_fn, optimizer):
         # Sets model to TRAIN mode
         model.train()
         # Makes predictions
+        print(ydata)
         yhat = model(xdata)
+        loss_fn = torch.nn.BCEWithLogitsLoss(
+            weight=ydata[1].to(DEVICE)
+        )
         # Computes loss
-        loss = loss_fn(yhat, torch.squeeze(ydata).to(DEVICE))
+        loss = loss_fn(yhat, torch.squeeze(ydata[0]).to(DEVICE))
         # Computes gradients
         loss.backward()
         # Updates parameters
