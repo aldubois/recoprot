@@ -9,6 +9,7 @@ import logging
 from .symbols import PROTEINS, DEVICE
 from .alignment import align_proteins_residues
 from .preprocess import (
+    preprocess_main,
     PreprocessorOptions,
     preprocess,
     Preprocessor,
