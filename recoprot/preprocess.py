@@ -101,13 +101,13 @@ class PreprocessorOptions:
         parser.add_argument(
             "-i", "--input-dir", dest='inp',
             required=True, metavar='DIR',
-            type=lambda inp: self._is_dir(parser, inp),
+            type=lambda inp: PreprocessorOptions._is_dir(parser, inp),
             help='Data output directory'
         )
         parser.add_argument(
             "-o", "--output-dir", dest='out',
             required=True, metavar='DIR',
-            type=lambda inp: self._build_dir(parser, inp),
+            type=lambda inp: PreprocessorOptions._build_dir(parser, inp),
             help='Data output directory'
         )
         # Optional arguments
