@@ -215,7 +215,6 @@ class Preprocessor:
         xdata, labels = Preprocessor._preprocess_structure(
             pname,
             self.options.inp,
-            self.options.protbert,
             self.tokenizer,
             self.model
         )
@@ -435,7 +434,6 @@ class Preprocessor:
         with torch.no_grad():
             embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
         embedding = embedding.cpu().numpy()
-        print(embedding.shape)
         return embedding.reshape((embedding.shape[1], embedding.shape[2]))[1:-1]
         
 

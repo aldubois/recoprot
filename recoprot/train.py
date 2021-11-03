@@ -79,7 +79,6 @@ def make_train_step(model, optimizer):
         # Sets model to TRAIN mode
         model.train()
         # Makes predictions
-        print(ydata)
         yhat = model(xdata)
         loss_fn = torch.nn.BCEWithLogitsLoss(
             weight=ydata[1].to(DEVICE)

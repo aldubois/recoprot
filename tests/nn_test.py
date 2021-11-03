@@ -33,6 +33,6 @@ def test_complete_network():
     assert(len(loader) == 1)
     name, x, labels = loader[0]
 
-    nn = recoprot.CompleteNetwork([128, 256, 512], [128, 256])
+    nn = recoprot.CompleteNetwork([128, 256, 512], [128, 256], False)
     res = nn.forward(x)
     return

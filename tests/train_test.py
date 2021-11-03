@@ -59,7 +59,7 @@ def test_train_no_batch():
     # Train for 2 epochs
     # Sometimes for some weight values the loss is at 0. and don't move so we repeat
     for _ in range(10):
-        gnn = recoprot.CompleteNetwork([128, 256, 512], [128, 256])
+        gnn = recoprot.CompleteNetwork([128, 256, 512], [128, 256], False)
         model = gnn.to(recoprot.DEVICE)
         losses = recoprot.train(model, dataset, 2, 0.001)
         if losses[0] != 0.:
@@ -93,10 +93,10 @@ def test_train_no_batch_bert():
          torch.from_numpy(x_ref[1][3]),
          torch.from_numpy(x_ref[1][4])],
     )
-    labels = torch.from_numpy(labels_ref)
+    targets = recoprot.build_targets(labels_ref)
     
     # Build the dataset and it's loader (no batch)
-    dataset = OneProteinDataset(PROT_NAME, x, labels)
+    dataset = OneProteinDataset(PROT_NAME, x, targets)
 
     # Build the GNN
 
