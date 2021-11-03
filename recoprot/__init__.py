@@ -9,22 +9,9 @@ import logging
 from .symbols import PROTEINS, DEVICE
 from .alignment import align_proteins_residues
 from .preprocess import (
-    preprocess_file_and_write_data,
-    preprocess_ligand_receptor_bound_unbound,
-    preprocess_protein_bound_unbound,
-    read_pdb_2prot_same_file,
-    read_pdb_2prot_different_files,
-    preprocess_file,
-    preprocess_protein,
-    encode_protein_atoms,
-    encode_protein_residues,
-    encode_neighbors,
-    label_data,
-    pdb2fasta,
-    parse_args,
-    Options,
+    PreprocessorOptions,
     preprocess,
-    preprocess_main,
+    Preprocessor,
     N_PROTEINS
 )
 from .nn import (

@@ -12,7 +12,6 @@ import torch
 
 # Internal
 from .symbols import CATEGORIES, DEVICE
-from .preprocess import _group_per_residue
 
 
 class CompleteNetwork(torch.nn.Module):
@@ -251,3 +250,15 @@ class GNN(torch.nn.Module):
         for conv in self.convs:
             xdata = conv.forward(xdata)
         return xdata[0][0], xdata[1][0]
+
+
+def _group_per_residue(atoms_residue, xdata):
+    groups = []
+    last_residue = -1
+    for residue_id, atom_data in zip(atoms_residue, xdata):
+        if residue_id != last_residue:
+            last_residue = residue_id
+            groups.append([atom_data])
+        else:
+            groups[-1].append(atom_data)
+    return [torch.stack(group) for group in groups]

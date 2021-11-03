@@ -24,18 +24,16 @@ def test_read_write_data():
     Test read/write of the LMDB.
     """
     
-    x_ref, labels_ref = recoprot.preprocess_ligand_receptor_bound_unbound(
-        PROT_NAME, DATA_DIR, 6.)
+    x_ref, labels_ref = recoprot.Preprocessor._preprocess_structure(PROT_NAME, DATA_DIR)
 
-    envw = lmdb.open('/tmp/test', max_dbs=2)
+    options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 20000000, [PROT_NAME], False)
+    preprocess = recoprot.Preprocessor(options)
+    envw = lmdb.open(options.out, map_size=options.db_size)
     with envw.begin(write=True) as txn:
-        txn.put(recoprot.N_PROTEINS.encode(), str(1).encode())
-        recoprot.preprocess_protein_bound_unbound(
-            PROT_NAME, txn, DATA_DIR,
-            idx=recoprot.PROTEINS.index(PROT_NAME)
-        )
+        preprocess.write_context(txn)
+        for i, pname in enumerate(options.proteins):
+            preprocess.preprocess(pname, txn, recoprot.PROTEINS.index(PROT_NAME))
     envw.close()
-
 
     loader = OneProteinDataset("/tmp/test")
     assert(len(loader) == 1)

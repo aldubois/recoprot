@@ -6,3 +6,4 @@ biopandas
 sklearn
 torch
 lmdb
+transformers

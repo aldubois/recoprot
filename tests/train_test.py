@@ -34,8 +34,7 @@ class OneProteinDataset(Dataset):
 
 def test_train_no_batch():
 
-    x_ref, labels_ref = recoprot.preprocess_ligand_receptor_bound_unbound(
-        PROT_NAME, DATA_DIR, 6.)
+    x_ref, labels_ref = recoprot.Preprocessor._preprocess_structure(PROT_NAME, DATA_DIR)
 
     x = (
         [torch.from_numpy(x_ref[0][0]),

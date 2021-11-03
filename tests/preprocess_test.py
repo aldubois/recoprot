@@ -5,9 +5,12 @@ Tests of the preprocessor functions.
 """
 
 import os
+import warnings
 
 import numpy as np
+from Bio.PDB.Chain import Chain
 from Bio.PDB.NeighborSearch import NeighborSearch
+from Bio.PDB.PDBParser import PDBParser
 
 from .context import recoprot
 
@@ -15,12 +18,59 @@ from .context import recoprot
 THIS_DIR = os.path.dirname(__file__)
 
 
+def read_pdb_2prot_same_file(filename):
+    """
+    Read a PDB file and output a biopython PDBParser object.
+
+    Parameters
+    ----------
+    filename: str
+        Path to PDB file.
+
+    Returns
+    -------
+    Tuple of two Bio.PDB.Chain.Chain
+        The two proteins' chains.
+    """
+    parser = PDBParser()
+    with warnings.catch_warnings(record=True):
+        structure = parser.get_structure("", filename)
+    chains = list(structure.get_chains())
+    return chains[0], chains[1]
+
+
+def label_data(residues1, residues2, limit=6.):
+    """
+    Determines if residues from two chains interact with each other.
+
+    Parameters
+    ----------
+    residues1 : list of Bio.PDB.Residue.Residue
+        List of residues to consider in protein1.
+    residues2 : list of Bio.PDB.Residue.Residue
+        List of residues to consider in protein2.
+    limit: float
+        Distance limit in Angstrom.
+
+    Returns
+    -------
+    np.ndarray of float
+        For each pair of residue, indicate if the two
+        residues interact with each other.
+    """
+    distances = recoprot.Preprocessor._compute_alpha_carbon_distance(
+        residues1,
+        residues2
+    )
+    return (distances <= limit).astype(np.float32)
+
+
 def test_reader_same_file():
     """
     Verify PDB reading file.
     """
     fname = os.path.join(THIS_DIR, "data", "same_file", "model.000.00.pdb")
-    chain1, chain2 = recoprot.read_pdb_2prot_same_file(fname)
+    chain1, chain2 = read_pdb_2prot_same_file(fname)
     atom1 = next(chain1.get_atoms())
     atom2 = next(chain2.get_atoms())
     assert str(atom1.get_vector()) == "<Vector 9.74, 68.48, 8.62>"
@@ -35,24 +85,12 @@ def test_reader_diff_file():
     bdir = os.path.join(THIS_DIR, "data", "diff_file")
     fname1 = os.path.join(bdir, "1A2K_l_b.pdb")
     fname2 = os.path.join(bdir, "1A2K_r_b.pdb")
-    chain1, chain2 = recoprot.read_pdb_2prot_different_files(fname1, fname2)
+    chain1, chain2 = recoprot.Preprocessor._read_prot(fname1, fname2)
     atom1 = next(chain1.get_atoms())
     atom2 = next(chain2.get_atoms())
     assert str(atom1.get_vector()) == "<Vector 69.13, 20.06, 76.59>"
     assert str(atom2.get_vector()) == "<Vector 28.19, 5.02, 62.68>"
     return    
-
-
-def test_pdb2fasta():
-    """
-    Verify function generating the fasta residue list on the first 10 residues.
-    """
-    fname = os.path.join(THIS_DIR, "data", "same_file", "model.000.00.pdb")
-    _, chain = recoprot.read_pdb_2prot_same_file(fname)
-    calc = recoprot.pdb2fasta(chain)[:10]
-    ref = "MELKNSISDY"
-    assert ref == calc
-    return
 
 
 def test_encode_protein_atoms():
@@ -69,7 +107,7 @@ def test_encode_protein_atoms():
          [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
          [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]]
     )
-    calc = recoprot.encode_protein_atoms(atoms)
+    calc = recoprot.Preprocessor._encode_protein_atoms(atoms)
     assert (calc.toarray() == ref).all()
     return
 
@@ -88,9 +126,7 @@ def test_encode_protein_residues():
          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
          [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
     )
-    calc = recoprot.encode_protein_residues(residues)
-    print(calc.toarray())
-    print(ref)
+    calc = recoprot.Preprocessor._encode_protein_residues(residues)
     assert (calc.toarray() == ref).all()
     return
 
@@ -102,9 +138,9 @@ def test_encode_neighbors():
     This function result is compared to the result given by Soumyadip's original function.
     """    
     fname = os.path.join(THIS_DIR, "data", "same_file", "model.000.00.pdb")
-    chain, _ = recoprot.read_pdb_2prot_same_file(fname)
+    chain, _ = read_pdb_2prot_same_file(fname)
     atoms = list(chain.get_atoms())
-    calc_in, calc_out = recoprot.encode_neighbors(atoms)
+    calc_in, calc_out = recoprot.Preprocessor._encode_neighbors(atoms)
     ref_in, ref_out = ref_neigh1(np.array(atoms))
     assert (ref_in == calc_in).all()
     assert (ref_out == calc_out).all()
@@ -115,8 +151,8 @@ def test_label_data():
     """
     """
     fname = os.path.join(THIS_DIR, "data", "same_file", "model.000.00.pdb")
-    chain1, chain2 = recoprot.read_pdb_2prot_same_file(fname)
-    labels = recoprot.label_data(chain1, chain2)
+    chain1, chain2 = read_pdb_2prot_same_file(fname)
+    labels = label_data(chain1, chain2)
     # Computed manually distances on a few cases
     assert labels[0] == False
     assert labels[1] == True
