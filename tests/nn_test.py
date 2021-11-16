@@ -21,7 +21,7 @@ class OneProteinDataset(recoprot.ProteinsDataset):
 def test_complete_network():
 
     options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 20000000, [PROT_NAME], False)
-    preprocess = recoprot.Preprocessor(options)
+    preprocess = recoprot.AtomsPreprocessor(options)
     envw = lmdb.open(options.out, map_size=options.db_size)
     with envw.begin(write=True) as txn:
         preprocess.write_context(txn)

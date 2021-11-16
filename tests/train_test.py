@@ -35,7 +35,7 @@ class OneProteinDataset(Dataset):
 
 def test_train_no_batch():
 
-    x_ref, labels_ref = recoprot.Preprocessor._preprocess_structure(PROT_NAME, DATA_DIR)
+    x_ref, labels_ref = recoprot.AtomsPreprocessor._preprocess_structure(PROT_NAME, DATA_DIR)
 
     x = (
         [torch.from_numpy(x_ref[0][0]),
@@ -79,7 +79,7 @@ def test_train_no_batch_bert():
     )
     model = model.to(recoprot.DEVICE)
     model = model.eval()
-    x_ref, labels_ref = recoprot.Preprocessor._preprocess_structure(PROT_NAME, DATA_DIR, tokenizer, model)
+    x_ref, labels_ref = recoprot.AtomsPreprocessor._preprocess_structure(PROT_NAME, DATA_DIR, tokenizer, model)
 
     x = (
         [torch.from_numpy(x_ref[0][0]),

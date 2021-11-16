@@ -7,13 +7,14 @@ Recoprot : Module training GNN models to predict proteins docking.
 import logging
 
 from .symbols import PROTEINS, DEVICE
-from .alignment import align_proteins_residues
 from .preprocess import (
     preprocess_main,
     PreprocessorOptions,
-    preprocess,
+    preprocess_all,
     Preprocessor,
-    N_PROTEINS
+    AtomsPreprocessor,
+    ResiduesPreprocessor,
+    align_proteins_residues
 )
 from .nn import (
     CompleteNetwork,

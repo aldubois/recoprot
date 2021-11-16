@@ -58,7 +58,7 @@ def label_data(residues1, residues2, limit=6.):
         For each pair of residue, indicate if the two
         residues interact with each other.
     """
-    distances = recoprot.Preprocessor._compute_alpha_carbon_distance(
+    distances = recoprot.AtomsPreprocessor._compute_alpha_carbon_distance(
         residues1,
         residues2
     )
@@ -85,7 +85,7 @@ def test_reader_diff_file():
     bdir = os.path.join(THIS_DIR, "data", "diff_file")
     fname1 = os.path.join(bdir, "1A2K_l_b.pdb")
     fname2 = os.path.join(bdir, "1A2K_r_b.pdb")
-    chain1, chain2 = recoprot.Preprocessor._read_prot(fname1, fname2)
+    chain1, chain2 = recoprot.AtomsPreprocessor._read_prot(fname1, fname2)
     atom1 = next(chain1.get_atoms())
     atom2 = next(chain2.get_atoms())
     assert str(atom1.get_vector()) == "<Vector 69.13, 20.06, 76.59>"
@@ -107,7 +107,7 @@ def test_encode_protein_atoms():
          [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
          [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]]
     )
-    calc = recoprot.Preprocessor._encode_protein_atoms(atoms)
+    calc = recoprot.AtomsPreprocessor._encode_protein_atoms(atoms)
     assert (calc.toarray() == ref).all()
     return
 
@@ -126,7 +126,7 @@ def test_encode_protein_residues():
          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
          [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
     )
-    calc = recoprot.Preprocessor._encode_protein_residues(residues)
+    calc = recoprot.AtomsPreprocessor._encode_protein_residues(residues)
     assert (calc.toarray() == ref).all()
     return
 
@@ -140,7 +140,7 @@ def test_encode_neighbors():
     fname = os.path.join(THIS_DIR, "data", "same_file", "model.000.00.pdb")
     chain, _ = read_pdb_2prot_same_file(fname)
     atoms = list(chain.get_atoms())
-    calc_in, calc_out = recoprot.Preprocessor._encode_neighbors(atoms)
+    calc_in, calc_out = recoprot.AtomsPreprocessor._encode_neighbors(atoms)
     ref_in, ref_out = ref_neigh1(np.array(atoms))
     assert (ref_in == calc_in).all()
     assert (ref_out == calc_out).all()

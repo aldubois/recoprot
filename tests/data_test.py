@@ -24,10 +24,10 @@ def test_read_write_data():
     Test read/write of the LMDB.
     """
     
-    x_ref, labels_ref = recoprot.Preprocessor._preprocess_structure(PROT_NAME, DATA_DIR)
+    x_ref, labels_ref = recoprot.AtomsPreprocessor._preprocess_structure(PROT_NAME, DATA_DIR)
 
     options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 20000000, [PROT_NAME], False)
-    preprocess = recoprot.Preprocessor(options)
+    preprocess = recoprot.AtomsPreprocessor(options)
     envw = lmdb.open(options.out, map_size=options.db_size)
     with envw.begin(write=True) as txn:
         preprocess.write_context(txn)
