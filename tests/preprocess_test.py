@@ -58,7 +58,7 @@ def label_data(residues1, residues2, limit=6.):
         For each pair of residue, indicate if the two
         residues interact with each other.
     """
-    distances = recoprot.AtomsPreprocessor._compute_alpha_carbon_distance(
+    distances = recoprot.AtomsPreprocessor._compute_residues_alpha_carbon_distance(
         residues1,
         residues2
     )

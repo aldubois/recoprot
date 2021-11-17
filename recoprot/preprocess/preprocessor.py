@@ -10,14 +10,20 @@ import abc
 import logging
 import argparse
 import warnings
+from itertools import product
 
 # External Dependencies
+import numpy as np
+import torch
 from Bio.PDB.PDBParser import PDBParser
+from sklearn.preprocessing import OneHotEncoder
 from transformers import BertModel, BertTokenizer
 
 # Recoprot
 from ..symbols import (
     DEVICE,
+    CATEGORIES,
+    RESIDUES,
     N_PROTEINS,
     PROTEINS,
     BOUND_LIGAND,
@@ -32,12 +38,13 @@ class PreprocessorOptions:
     Class containing user-defined options for preprocessing.
     """
 
-    def __init__(self, inp, out, db_size, proteins, protbert):
+    def __init__(self, inp, out, db_size, proteins, protbert, atoms):
         self.inp = inp
         self.out = out
         self.db_size = db_size
         self.proteins = (PROTEINS if proteins is None else proteins)
         self.protbert = protbert
+        self.atoms = atoms
 
     @classmethod
     def parse_args(cls):
@@ -76,7 +83,14 @@ class PreprocessorOptions:
             "--protbert", dest="protbert",
             action="store_true",
             default=False,
-            help="Display information messages"
+            help="Use ProtBert pretraining"
+        )
+        # Optional arguments
+        parser.add_argument(
+            "--atoms", dest="atoms",
+            action="store_true",
+            default=False,
+            help="Generate atom level data"
         )
         # Optional arguments
         parser.add_argument(
@@ -91,7 +105,7 @@ class PreprocessorOptions:
             logging.basicConfig(format=log_fmt, level=logging.INFO)
         else:
             logging.basicConfig(format=log_fmt)
-        return cls(args.inp, args.out, args.db_size, args.proteins, args.protbert)
+        return cls(args.inp, args.out, args.db_size, args.proteins, args.protbert, args.atoms)
 
     @staticmethod
     def _is_dir(parser, arg):
@@ -119,7 +133,8 @@ class PreprocessorOptions:
         return (f"Options(inp={self.inp}, out={self.out},"
                 f" db_size={self.db_size},"
                 f" proteins={self.proteins},"
-                f" protbert={self.protbert})")
+                f" protbert={self.protbert},"
+                f" atoms={self.atoms})")
 
 
 class Preprocessor:
@@ -266,3 +281,92 @@ class Preprocessor:
             chains1 = next(structure1.get_chains())
             chains2 = next(structure2.get_chains())
         return chains1, chains2
+
+    
+    @staticmethod
+    def _compute_residues_alpha_carbon_distance(residues1, residues2):
+        # Get the residues number per atom
+        distances = [
+            Preprocessor._compute_distance(res1, res2)
+            for res1, res2 in product(residues1, residues2)
+        ]
+        return np.array(distances).astype(np.float32)
+
+    @staticmethod
+    def _find_alpha_carbon(residue):
+        alpha_carbon = "CA"
+        for atom in residue.get_atoms():
+            if atom.get_name() == alpha_carbon:
+                return atom
+        return None
+        
+    @staticmethod
+    def _compute_distance(residue1, residue2):
+        atom1 = Preprocessor._find_alpha_carbon(residue1)
+        atom2 = Preprocessor._find_alpha_carbon(residue2)
+        if atom1 is None or atom2 is None:
+            return np.Inf
+        else:
+            return atom1 - atom2
+        
+    
+    @staticmethod
+    def _call_protbert(residues, tokenizer, model):
+        """
+        Create the ProtBert features from the list of residues name.
+
+        Parameters
+        ----------
+        residues: list of str
+            List of residue name per atom in a protein.
+
+        Returns
+        -------
+        np.ndarray : np.ndarray
+            ProtBert features.
+        """
+        categories = np.array(CATEGORIES[RESIDUES]).reshape(-1, 1)
+        categorized_residues = " ".join([
+            residue if residue in categories else '1'
+            for residue in residues
+        ])
+        ids = tokenizer(
+            categorized_residues,
+            # add_special_tokens=True,
+            # pad_to_max_length=True,
+            return_tensors="pt"
+        )
+        input_ids = ids['input_ids'].to(DEVICE)
+        attention_mask = ids['attention_mask'].to(DEVICE)
+        with torch.no_grad():
+            embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
+        embedding = embedding.cpu().numpy()
+        return embedding.reshape((embedding.shape[1], embedding.shape[2]))[1:-1]
+
+
+    @staticmethod
+    def _encode_protein_residues(residues):
+        """
+        Encode protein residues list into integer array.
+
+        Parameters
+        ----------
+        residues: list of str
+            List of residue name per atom in a protein.
+
+        Returns
+        -------
+        {ndarray, sparse matrix} of shape (n_residues, n_encoded_features)
+            Encoded atoms chain in a Compressed Sparse Row format.
+        """
+        encoder = OneHotEncoder(handle_unknown='ignore')
+        categories = np.array(CATEGORIES[RESIDUES]).reshape(-1, 1)
+        encoder.fit(categories)
+        categorized_residues = np.array([
+            residue if residue in categories else '1'
+            for residue in residues
+        ])
+        encoded_residues = encoder.transform(
+            categorized_residues.reshape(-1, 1)
+        )
+        return encoded_residues    

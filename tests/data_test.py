@@ -26,7 +26,7 @@ def test_read_write_data():
     
     x_ref, labels_ref = recoprot.AtomsPreprocessor._preprocess_structure(PROT_NAME, DATA_DIR)
 
-    options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 20000000, [PROT_NAME], False)
+    options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 20000000, [PROT_NAME], False, True)
     preprocess = recoprot.AtomsPreprocessor(options)
     envw = lmdb.open(options.out, map_size=options.db_size)
     with envw.begin(write=True) as txn:

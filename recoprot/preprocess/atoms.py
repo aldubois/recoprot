@@ -6,7 +6,6 @@ Atoms preprocessor.
 
 # Standard Library
 import logging
-from itertools import product
 
 # External Dependencies
 import numpy as np
@@ -77,7 +76,7 @@ class AtomsPreprocessor(Preprocessor):
             AtomsPreprocessor._preprocess_protein(res_l_u, tokenizer, model),
             AtomsPreprocessor._preprocess_protein(res_r_u, tokenizer, model)
         )
-        labels = AtomsPreprocessor._compute_alpha_carbon_distance(res_l_b, res_r_b)
+        labels = AtomsPreprocessor._compute_residues_alpha_carbon_distance(res_l_b, res_r_b)
         return xdata, labels
 
 
@@ -107,9 +106,9 @@ class AtomsPreprocessor(Preprocessor):
         ]
         x_atoms = AtomsPreprocessor._encode_protein_atoms(atoms).toarray()
         x_residues = (
-            AtomsPreprocessor._call_protbert(atoms_resname, tokenizer, model)
+            Preprocessor._call_protbert(atoms_resname, tokenizer, model)
             if tokenizer is not None and model is not None
-            else AtomsPreprocessor._encode_protein_residues(atoms_resname).toarray()
+            else Preprocessor._encode_protein_residues(atoms_resname).toarray()
         )
         x_same_neigh, x_diff_neigh = AtomsPreprocessor._encode_neighbors(atoms)
         residues_names = np.array(
@@ -155,90 +154,6 @@ class AtomsPreprocessor(Preprocessor):
             categorized_atoms.reshape(-1, 1)
         )
         return encoded_atoms
-
-
-    @staticmethod
-    def _encode_protein_residues(residues):
-        """
-        Encode protein residues list into integer array.
-
-        Parameters
-        ----------
-        residues: list of str
-            List of residue name per atom in a protein.
-
-        Returns
-        -------
-        {ndarray, sparse matrix} of shape (n_residues, n_encoded_features)
-            Encoded atoms chain in a Compressed Sparse Row format.
-        """
-        encoder = OneHotEncoder(handle_unknown='ignore')
-        categories = np.array(CATEGORIES[RESIDUES]).reshape(-1, 1)
-        encoder.fit(categories)
-        categorized_residues = np.array([
-            residue if residue in categories else '1'
-            for residue in residues
-        ])
-        encoded_residues = encoder.transform(
-            categorized_residues.reshape(-1, 1)
-        )
-        return encoded_residues
-
-    @staticmethod
-    def _call_protbert(residues, tokenizer, model):
-        """
-        Create the ProtBert features from the list of residues name.
-
-        Parameters
-        ----------
-        residues: list of str
-            List of residue name per atom in a protein.
-
-        Returns
-        -------
-        np.ndarray : np.ndarray
-            ProtBert features.
-        """
-        categories = np.array(CATEGORIES[RESIDUES]).reshape(-1, 1)
-        categorized_residues = " ".join([
-            residue if residue in categories else '1'
-            for residue in residues
-        ])
-        ids = tokenizer(
-            categorized_residues,
-            # add_special_tokens=True,
-            # pad_to_max_length=True,
-            return_tensors="pt"
-        )
-        input_ids = ids['input_ids'].to(DEVICE)
-        attention_mask = ids['attention_mask'].to(DEVICE)
-        with torch.no_grad():
-            embedding = model(input_ids=input_ids,attention_mask=attention_mask)[0]
-        embedding = embedding.cpu().numpy()
-        return embedding.reshape((embedding.shape[1], embedding.shape[2]))[1:-1]
-
-
-    @staticmethod
-    def _compute_alpha_carbon_distance(residues1, residues2):
-        # Get the residues number per atom
-        distances = []
-        alpha_carbon = "CA"
-        for residue1, residue2 in product(residues1, residues2):
-            atom1 = None
-            atom2 = None
-            for atom in residue1.get_atoms():
-                if atom.get_name() == alpha_carbon:
-                    atom1 = atom
-                    break
-            for atom in residue2.get_atoms():
-                if atom.get_name() == alpha_carbon:
-                    atom2 = atom
-                    break
-            if (atom1 is None) or (atom2 is None):
-                distances.append(np.Inf)
-            else:
-                distances.append(atom1 - atom2)
-        return np.array(distances).astype(np.float32)
 
 
     @staticmethod
