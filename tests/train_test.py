@@ -49,7 +49,7 @@ def test_train_no_batch():
          torch.from_numpy(x_ref[1][3]),
          torch.from_numpy(x_ref[1][4])],
     )
-    targets = recoprot.build_targets(labels_ref)
+    targets = recoprot.ProteinInteractionDataset._build_targets(labels_ref)
     
     # Build the dataset and it's loader (no batch)
     dataset = OneProteinDataset(PROT_NAME, x, targets)
@@ -93,7 +93,7 @@ def test_train_no_batch_bert():
          torch.from_numpy(x_ref[1][3]),
          torch.from_numpy(x_ref[1][4])],
     )
-    targets = recoprot.build_targets(labels_ref)
+    targets = recoprot.ProteinInteractionDataset._build_targets(labels_ref)
     
     # Build the dataset and it's loader (no batch)
     dataset = OneProteinDataset(PROT_NAME, x, targets)

@@ -19,7 +19,7 @@ from .preprocess import (
 from .nn import NoConv, AtomsNetwork, ResiduesNetwork
 from .pssm import call_psiblast
 from .data import (
-    build_targets,
+    ProteinInteractionDataset,
     AtomsDataset,
     AtomsTrainingDataset,
     AtomsValidationDataset,

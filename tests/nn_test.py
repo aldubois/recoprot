@@ -33,7 +33,7 @@ def test_atoms_network():
             preprocess.preprocess(pname, txn, recoprot.PROTEINS.index(PROT_NAME))
     envw.close()
 
-    loader = OneProteinAtomsDataset("/tmp/test")
+    loader = OneProteinAtomsDataset("/tmp/test", False)
     assert(len(loader) == 1)
     name, x, labels = loader[0]
 
@@ -42,9 +42,29 @@ def test_atoms_network():
     return
 
 
+def test_atoms_network_bert():
+
+    options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 20000000, [PROT_NAME], True, True)
+    preprocess = recoprot.AtomsPreprocessor(options)
+    envw = lmdb.open(options.out, map_size=options.db_size)
+    with envw.begin(write=True) as txn:
+        preprocess.write_context(txn)
+        for i, pname in enumerate(options.proteins):
+            preprocess.preprocess(pname, txn, recoprot.PROTEINS.index(PROT_NAME))
+    envw.close()
+
+    loader = OneProteinAtomsDataset("/tmp/test", True)
+    assert(len(loader) == 1)
+    name, x, labels = loader[0]
+
+    nn = recoprot.AtomsNetwork([128, 256, 512], [128, 256], True)
+    res = nn.forward(x)
+    return
+
+
 def test_residues_network():
 
-    options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 20000000, [PROT_NAME], False, False)
+    options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 20000000, [PROT_NAME], True, False)
     preprocess = recoprot.ResiduesPreprocessor(options)
     envw = lmdb.open(options.out, map_size=options.db_size)
     with envw.begin(write=True) as txn:
@@ -53,10 +73,10 @@ def test_residues_network():
             preprocess.preprocess(pname, txn, recoprot.PROTEINS.index(PROT_NAME))
     envw.close()
 
-    loader = OneProteinResiduesDataset("/tmp/test")
+    loader = OneProteinResiduesDataset("/tmp/test", True)
     assert(len(loader) == 1)
     name, x, labels = loader[0]
 
-    nn = recoprot.ResiduesNetwork([128, 256, 512], [128, 256], False)
+    nn = recoprot.ResiduesNetwork([128, 256, 512], [128, 256], True)
     res = nn.forward(x)
     return

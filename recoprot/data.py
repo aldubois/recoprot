@@ -4,6 +4,8 @@
 Pytorch Datasets for training.
 """
 
+import abc
+
 import numpy as np
 import lmdb
 import torch
@@ -35,77 +37,111 @@ from .symbols import (
 )
 
 
-def read_atoms_full_db(txn):
+class ProteinInteractionDataset(Dataset):
+
     """
-    Read all pairs of proteins from the LMDB file.
+    Dataset for protein pairs.
+    """
+    __metaclass__ = abc.ABCMeta
+    
+    PROT_NAMES = PROTEINS
 
-    Parameters
-    ----------
-    txn : lmdb.Transaction
-        LMDB transaction to write in.
+    def __init__(self, dbpath, bert):
+        self.env = lmdb.open(dbpath)
+        self.start = PROTEINS.index(self.PROT_NAMES[0])
+        self.stop = PROTEINS.index(self.PROT_NAMES[-1]) + 1
+        self.size = self.stop - self.start
+        self.bert = bert
 
-    Returns
-    -------
-    list of tuple containing:
+    def __getitem__(self, idx):
+        if (idx < 0 or idx >= self.size):
+            raise IndexError()
+        with self.env.begin(write=False) as txn:
+            name, xdata, ydata = self._read_protein_pair(txn, idx)
+        return name, xdata, ydata
+
+    def __len__(self):
+        return self.size
+
+    def __del__(self):
+        self.env.close()
+
+    @abc.abstractmethod
+    def _read_protein_pair(txn, idx):
+        pass
+
+    @staticmethod
+    def _build_targets(distances):
+        # The label is 1
+        labels = (distances <= 6.)
+        cases = labels | (distances > 7.)
+        labels = labels.astype(np.float32)
+        pos_weight = sum(cases) / (sum(labels) + 1)
+        weights = (pos_weight - 1) * labels + cases
+        targets = torch.from_numpy(labels), torch.from_numpy(weights)
+        return targets
+    
+
+        
+
+    
+class AtomsDataset(ProteinInteractionDataset):
+
+    """
+    Dataset for atoms data in proteins pairs.
+    """
+
+    def _read_protein_pair(self, txn, idx):
+        """
+        Read atoms data of a pair of protein from the LMDB file.
+
+        Parameters
+        ----------
+        txn : lmdb.Transaction
+            LMDB transaction to write in.
+        idx : int
+            Index of the PDB file (ex: you are reading the data from PDB
+            file in the environment and you are currently reading the
+            idx'th one).
+
+        Returns
+        -------
         tuple of tuple of np.ndarray
             Input of the GNN.
         torch.tensor of float
             Target labels of the GNN.
-    """
-    size = int(txn.get(N_PROTEINS.encode()).decode())
-    return [read_atoms_protein_pair(txn, idx) for idx in range(size)]
+        """
+        prefix = f"{self.start + idx}"
 
+        name = txn.get(prefix.encode()).decode()
 
-def read_atoms_protein_pair(txn, idx):
-    """
-    Read atoms data of a pair of protein from the LMDB file.
-
-    Parameters
-    ----------
-    txn : lmdb.Transaction
-        LMDB transaction to write in.
-    idx : int
-        Index of the PDB file (ex: you are reading the data from PDB
-        file in the environment and you are currently reading the
-        idx'th one).
-
-    Returns
-    -------
-    tuple of tuple of np.ndarray
-        Input of the GNN.
-    torch.tensor of float
-        Target labels of the GNN.
-    """
-    prefix = f"{idx}"
-
-    name = txn.get(prefix.encode()).decode()
-
-    l_enc_atoms = np.frombuffer(
-        txn.get(SEP.join([prefix, L_ENC_ATOMS]).encode()),
-        dtype=np.float32
-    )
-    l_enc_residues = np.frombuffer(
-        txn.get(SEP.join([prefix, L_ENC_RESIDUES]).encode()),
-        dtype=np.float32
-    )
-    l_neighbors_in = np.frombuffer(
-        txn.get(SEP.join([prefix, L_NEIGHBORS_IN]).encode()),
-        dtype=np.int64
-    )
-    l_neighbors_out = np.frombuffer(
-        txn.get(SEP.join([prefix, L_NEIGHBORS_OUT]).encode()),
-        dtype=np.int64
-    )
-    l_residues = np.frombuffer(
-        txn.get(SEP.join([prefix, L_RESIDUES]).encode()),
-        dtype=np.int64
-    )
-    xdata1 = (
-        torch.from_numpy(np.copy(
-            l_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS])))
-        )),
-        torch.from_numpy(np.copy(
-            l_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES])))
+        l_enc_atoms = np.frombuffer(
+            txn.get(SEP.join([prefix, L_ENC_ATOMS]).encode()),
+            dtype=np.float32
+        )
+        l_enc_residues = np.frombuffer(
+            txn.get(SEP.join([prefix, L_ENC_RESIDUES]).encode()),
+            dtype=np.float32
+        )
+        l_neighbors_in = np.frombuffer(
+            txn.get(SEP.join([prefix, L_NEIGHBORS_IN]).encode()),
+            dtype=np.int64
+        )
+        l_neighbors_out = np.frombuffer(
+            txn.get(SEP.join([prefix, L_NEIGHBORS_OUT]).encode()),
+            dtype=np.int64
+        )
+        l_residues = np.frombuffer(
+            txn.get(SEP.join([prefix, L_RESIDUES]).encode()),
+            dtype=np.int64
+        )
+        residues_feat = 1024 if self.bert else len(CATEGORIES[RESIDUES])
+        xdata1 = (
+            torch.from_numpy(np.copy(
+                l_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS])))
+            )),
+            torch.from_numpy(np.copy(
+                l_enc_residues.reshape((-1, residues_feat))
         )),
         torch.from_numpy(np.copy(
             l_neighbors_in.reshape((-1, 10))
@@ -114,155 +150,52 @@ def read_atoms_protein_pair(txn, idx):
             l_neighbors_out.reshape((-1, 10))
         )),
         torch.from_numpy(np.copy(l_residues))
-    )
+        )
 
-    r_enc_atoms = np.frombuffer(
-        txn.get(SEP.join([prefix, R_ENC_ATOMS]).encode()),
-        dtype=np.float32
-    )
-    r_enc_residues = np.frombuffer(
-        txn.get(SEP.join([prefix, R_ENC_RESIDUES]).encode()),
-        dtype=np.float32
-    )
-    r_neighbors_in = np.frombuffer(
-        txn.get(SEP.join([prefix, R_NEIGHBORS_IN]).encode()),
-        dtype=np.int64
-    )
-    r_neighbors_out = np.frombuffer(
-        txn.get(SEP.join([prefix, R_NEIGHBORS_OUT]).encode()),
-        dtype=np.int64
-    )
-    r_residues = np.frombuffer(
-        txn.get(SEP.join([prefix, R_RESIDUES]).encode()),
-        dtype=np.int64
-    )
-    xdata2 = (
-        torch.from_numpy(np.copy(
-            r_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS])))
-        )),
-        torch.from_numpy(np.copy(
-            r_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES])))
-        )),
-        torch.from_numpy(np.copy(
-            r_neighbors_in.reshape((-1, 10))
-        )),
+        r_enc_atoms = np.frombuffer(
+            txn.get(SEP.join([prefix, R_ENC_ATOMS]).encode()),
+            dtype=np.float32
+        )
+        r_enc_residues = np.frombuffer(
+            txn.get(SEP.join([prefix, R_ENC_RESIDUES]).encode()),
+            dtype=np.float32
+        )
+        r_neighbors_in = np.frombuffer(
+            txn.get(SEP.join([prefix, R_NEIGHBORS_IN]).encode()),
+            dtype=np.int64
+        )
+        r_neighbors_out = np.frombuffer(
+            txn.get(SEP.join([prefix, R_NEIGHBORS_OUT]).encode()),
+            dtype=np.int64
+        )
+        r_residues = np.frombuffer(
+            txn.get(SEP.join([prefix, R_RESIDUES]).encode()),
+            dtype=np.int64
+        )
+        xdata2 = (
+            torch.from_numpy(np.copy(
+                r_enc_atoms.reshape((-1, len(CATEGORIES[ATOMS])))
+            )),
+            torch.from_numpy(np.copy(
+                r_enc_residues.reshape((-1, residues_feat))
+            )),
+            torch.from_numpy(np.copy(
+                r_neighbors_in.reshape((-1, 10))
+            )),
         torch.from_numpy(np.copy(
             r_neighbors_out.reshape((-1, 10))
         )),
-        torch.from_numpy(np.copy(r_residues))
-    )
-
-    distances = np.frombuffer(
-        txn.get(SEP.join([prefix, LABELS]).encode()),
-        dtype=np.float32
-    )
-    targets = build_targets(distances)
-    return name, (xdata1, xdata2), targets
-
-
-def read_residues_protein_pair(txn, idx):
-    """
-    Read residues data of a pair of protein from the LMDB file.
-
-    Parameters
-    ----------
-    txn : lmdb.Transaction
-        LMDB transaction to write in.
-    idx : int
-        Index of the PDB file (ex: you are reading the data from PDB
-        file in the environment and you are currently reading the
-        idx'th one).
-
-    Returns
-    -------
-    tuple of tuple of np.ndarray
-        Input of the GNN.
-    torch.tensor of float
-        Target labels of the GNN.
-    """
-    prefix = f"{idx}"
-
-    name = txn.get(prefix.encode()).decode()
-
-    l_enc_residues = np.frombuffer(
-        txn.get(SEP.join([prefix, L_ENC_RESIDUES]).encode()),
-        dtype=np.float32
-    )
-    l_neighbors = np.frombuffer(
-        txn.get(SEP.join([prefix, L_NEIGHBORS]).encode()),
-        dtype=np.int64
-    )
-    xdata1 = (
-        torch.from_numpy(np.copy(
-            l_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES])))
-        )),
-        torch.from_numpy(np.copy(
-            l_neighbors.reshape((-1, 10))
-        )),
-    )
-
-    r_enc_residues = np.frombuffer(
-        txn.get(SEP.join([prefix, R_ENC_RESIDUES]).encode()),
-        dtype=np.float32
-    )
-    r_neighbors = np.frombuffer(
-        txn.get(SEP.join([prefix, R_NEIGHBORS]).encode()),
-        dtype=np.int64
-    )
-    xdata2 = (
-        torch.from_numpy(np.copy(
-            r_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES])))
-        )),
-        torch.from_numpy(np.copy(
-            r_neighbors.reshape((-1, 10))
-        )),
-    )
-
-    distances = np.frombuffer(
-        txn.get(SEP.join([prefix, LABELS]).encode()),
-        dtype=np.float32
-    )
-    targets = build_targets(distances)
-    return name, (xdata1, xdata2), targets
+            torch.from_numpy(np.copy(r_residues))
+        )
+        
+        distances = np.frombuffer(
+            txn.get(SEP.join([prefix, LABELS]).encode()),
+            dtype=np.float32
+        )
+        targets = self._build_targets(distances)
+        return name, (xdata1, xdata2), targets
 
 
-def build_targets(distances):
-    # The label is 1
-    labels = (distances <= 6.)
-    cases = labels | (distances > 7.)
-    labels = labels.astype(np.float32)
-    pos_weight = sum(cases) / (sum(labels) + 1)
-    weights = (pos_weight - 1) * labels + cases
-    targets = torch.from_numpy(labels), torch.from_numpy(weights)
-    return targets
-    
-
-class AtomsDataset(Dataset):
-
-    """
-    Dataset for atoms data in proteins pairs.
-    """
-
-    PROT_NAMES = PROTEINS
-
-    def __init__(self, dbpath):
-        self.env = lmdb.open(dbpath)
-        self.start = PROTEINS.index(self.PROT_NAMES[0])
-        self.stop = PROTEINS.index(self.PROT_NAMES[-1]) + 1
-        self.size = self.stop - self.start
-
-    def __getitem__(self, idx):
-        if (idx < 0 or idx >= self.size):
-            raise IndexError()
-        with self.env.begin(write=False) as txn:
-            name, xdata, ydata = read_atoms_protein_pair(txn, self.start + idx)
-        return name, xdata, ydata
-
-    def __len__(self):
-        return self.size
-
-    def __del__(self):
-        self.env.close()
 
 
 class AtomsTrainingDataset(AtomsDataset):
@@ -286,32 +219,78 @@ class AtomsTestingDataset(AtomsDataset):
     PROT_NAMES = TESTING
 
 
-class ResiduesDataset(Dataset):
+class ResiduesDataset(ProteinInteractionDataset):
 
     """
     Dataset for atoms data in proteins pairs.
     """
 
-    PROT_NAMES = PROTEINS
+    def _read_protein_pair(self, txn, idx):
+        """
+        Read residues data of a pair of protein from the LMDB file.
+        
+        Parameters
+        ----------
+        txn : lmdb.Transaction
+            LMDB transaction to write in.
+        idx : int
+            Index of the PDB file (ex: you are reading the data from PDB
+            file in the environment and you are currently reading the
+            idx'th one).
 
-    def __init__(self, dbpath):
-        self.env = lmdb.open(dbpath)
-        self.start = PROTEINS.index(self.PROT_NAMES[0])
-        self.stop = PROTEINS.index(self.PROT_NAMES[-1]) + 1
-        self.size = self.stop - self.start
+        Returns
+        -------
+        tuple of tuple of np.ndarray
+            Input of the GNN.
+        torch.tensor of float
+            Target labels of the GNN.
+        """
+        prefix = f"{self.start + idx}"
 
-    def __getitem__(self, idx):
-        if (idx < 0 or idx >= self.size):
-            raise IndexError()
-        with self.env.begin(write=False) as txn:
-            name, xdata, ydata = read_residues_protein_pair(txn, self.start + idx)
-        return name, xdata, ydata
+        name = txn.get(prefix.encode()).decode()
 
-    def __len__(self):
-        return self.size
+        l_enc_residues = np.frombuffer(
+            txn.get(SEP.join([prefix, L_ENC_RESIDUES]).encode()),
+            dtype=np.float32
+        )
+        l_neighbors = np.frombuffer(
+            txn.get(SEP.join([prefix, L_NEIGHBORS]).encode()),
+            dtype=np.int64
+        )
+        residues_feat = 1024 if self.bert else len(CATEGORIES[RESIDUES])
+        xdata1 = (
+            torch.from_numpy(np.copy(
+                l_enc_residues.reshape((-1, residues_feat))
+            )),
+            torch.from_numpy(np.copy(
+                l_neighbors.reshape((-1, 10))
+            )),
+        )
+        
+        r_enc_residues = np.frombuffer(
+            txn.get(SEP.join([prefix, R_ENC_RESIDUES]).encode()),
+            dtype=np.float32
+        )
+        r_neighbors = np.frombuffer(
+            txn.get(SEP.join([prefix, R_NEIGHBORS]).encode()),
+            dtype=np.int64
+        )
+        xdata2 = (
+            torch.from_numpy(np.copy(
+                r_enc_residues.reshape((-1, residues_feat))
+            )),
+            torch.from_numpy(np.copy(
+                r_neighbors.reshape((-1, 10))
+            )),
+        )
+        
+        distances = np.frombuffer(
+            txn.get(SEP.join([prefix, LABELS]).encode()),
+            dtype=np.float32
+        )
+        targets = self._build_targets(distances)
+        return name, (xdata1, xdata2), targets
 
-    def __del__(self):
-        self.env.close()
 
 
 class ResiduesTrainingDataset(ResiduesDataset):
