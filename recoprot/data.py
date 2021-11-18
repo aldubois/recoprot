@@ -16,11 +16,13 @@ from .symbols import (
     SEP,
     L_ENC_ATOMS,
     L_ENC_RESIDUES,
+    L_NEIGHBORS,
     L_NEIGHBORS_IN,
     L_NEIGHBORS_OUT,
     L_RESIDUES,
     R_ENC_ATOMS,
     R_ENC_RESIDUES,
+    R_NEIGHBORS,
     R_NEIGHBORS_IN,
     R_NEIGHBORS_OUT,
     R_RESIDUES,
@@ -33,7 +35,7 @@ from .symbols import (
 )
 
 
-def read_full_db(txn):
+def read_atoms_full_db(txn):
     """
     Read all pairs of proteins from the LMDB file.
 
@@ -51,12 +53,12 @@ def read_full_db(txn):
             Target labels of the GNN.
     """
     size = int(txn.get(N_PROTEINS.encode()).decode())
-    return [read_protein_pair(txn, idx) for idx in range(size)]
+    return [read_atoms_protein_pair(txn, idx) for idx in range(size)]
 
 
-def read_protein_pair(txn, idx):
+def read_atoms_protein_pair(txn, idx):
     """
-    Read a pair of protein from the LMDB file.
+    Read atoms data of a pair of protein from the LMDB file.
 
     Parameters
     ----------
@@ -158,6 +160,72 @@ def read_protein_pair(txn, idx):
     return name, (xdata1, xdata2), targets
 
 
+def read_residues_protein_pair(txn, idx):
+    """
+    Read residues data of a pair of protein from the LMDB file.
+
+    Parameters
+    ----------
+    txn : lmdb.Transaction
+        LMDB transaction to write in.
+    idx : int
+        Index of the PDB file (ex: you are reading the data from PDB
+        file in the environment and you are currently reading the
+        idx'th one).
+
+    Returns
+    -------
+    tuple of tuple of np.ndarray
+        Input of the GNN.
+    torch.tensor of float
+        Target labels of the GNN.
+    """
+    prefix = f"{idx}"
+
+    name = txn.get(prefix.encode()).decode()
+
+    l_enc_residues = np.frombuffer(
+        txn.get(SEP.join([prefix, L_ENC_RESIDUES]).encode()),
+        dtype=np.float32
+    )
+    l_neighbors = np.frombuffer(
+        txn.get(SEP.join([prefix, L_NEIGHBORS]).encode()),
+        dtype=np.int64
+    )
+    xdata1 = (
+        torch.from_numpy(np.copy(
+            l_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES])))
+        )),
+        torch.from_numpy(np.copy(
+            l_neighbors.reshape((-1, 10))
+        )),
+    )
+
+    r_enc_residues = np.frombuffer(
+        txn.get(SEP.join([prefix, R_ENC_RESIDUES]).encode()),
+        dtype=np.float32
+    )
+    r_neighbors = np.frombuffer(
+        txn.get(SEP.join([prefix, R_NEIGHBORS]).encode()),
+        dtype=np.int64
+    )
+    xdata2 = (
+        torch.from_numpy(np.copy(
+            r_enc_residues.reshape((-1, len(CATEGORIES[RESIDUES])))
+        )),
+        torch.from_numpy(np.copy(
+            r_neighbors.reshape((-1, 10))
+        )),
+    )
+
+    distances = np.frombuffer(
+        txn.get(SEP.join([prefix, LABELS]).encode()),
+        dtype=np.float32
+    )
+    targets = build_targets(distances)
+    return name, (xdata1, xdata2), targets
+
+
 def build_targets(distances):
     # The label is 1
     labels = (distances <= 6.)
@@ -169,10 +237,10 @@ def build_targets(distances):
     return targets
     
 
-class ProteinsDataset(Dataset):
+class AtomsDataset(Dataset):
 
     """
-    Dataset for proteins pairs.
+    Dataset for atoms data in proteins pairs.
     """
 
     PROT_NAMES = PROTEINS
@@ -187,7 +255,7 @@ class ProteinsDataset(Dataset):
         if (idx < 0 or idx >= self.size):
             raise IndexError()
         with self.env.begin(write=False) as txn:
-            name, xdata, ydata = read_protein_pair(txn, self.start + idx)
+            name, xdata, ydata = read_atoms_protein_pair(txn, self.start + idx)
         return name, xdata, ydata
 
     def __len__(self):
@@ -197,21 +265,70 @@ class ProteinsDataset(Dataset):
         self.env.close()
 
 
-class TrainingDataset(ProteinsDataset):
+class AtomsTrainingDataset(AtomsDataset):
     """
     Specific class for the training dataset.
     """
     PROT_NAMES = TRAINING
 
 
-class ValidationDataset(ProteinsDataset):
+class AtomsValidationDataset(AtomsDataset):
     """
     Specific class for the validation dataset.
     """
     PROT_NAMES = VALIDATION
 
 
-class TestingDataset(ProteinsDataset):
+class AtomsTestingDataset(AtomsDataset):
+    """
+    Specific class for the testing dataset.
+    """
+    PROT_NAMES = TESTING
+
+
+class ResiduesDataset(Dataset):
+
+    """
+    Dataset for atoms data in proteins pairs.
+    """
+
+    PROT_NAMES = PROTEINS
+
+    def __init__(self, dbpath):
+        self.env = lmdb.open(dbpath)
+        self.start = PROTEINS.index(self.PROT_NAMES[0])
+        self.stop = PROTEINS.index(self.PROT_NAMES[-1]) + 1
+        self.size = self.stop - self.start
+
+    def __getitem__(self, idx):
+        if (idx < 0 or idx >= self.size):
+            raise IndexError()
+        with self.env.begin(write=False) as txn:
+            name, xdata, ydata = read_residues_protein_pair(txn, self.start + idx)
+        return name, xdata, ydata
+
+    def __len__(self):
+        return self.size
+
+    def __del__(self):
+        self.env.close()
+
+
+class ResiduesTrainingDataset(ResiduesDataset):
+    """
+    Specific class for the training dataset.
+    """
+    PROT_NAMES = TRAINING
+
+
+class ResiduesValidationDataset(ResiduesDataset):
+    """
+    Specific class for the validation dataset.
+    """
+    PROT_NAMES = VALIDATION
+
+
+class ResiduesTestingDataset(ResiduesDataset):
     """
     Specific class for the testing dataset.
     """

@@ -92,11 +92,8 @@ class ResiduesPreprocessor(Preprocessor):
         )
 
         x_neighbors = ResiduesPreprocessor._encode_neighbors(residues)
-        xdata = (
-            x_residues.astype(np.float32),
-            x_neighbors.astype(np.float32),
-            np.array(residues_name)
-        )
+        xdata = (x_residues.astype(np.float32),
+                 x_neighbors)
         return xdata
 
 
@@ -116,7 +113,7 @@ class ResiduesPreprocessor(Preprocessor):
             neighbors.append(closest[:min(len(distances), n_neighbors)])
 
 
-        res = - np.ones((len(residues), n_neighbors), dtype=int)
+        res = - np.ones((len(residues), n_neighbors), dtype=np.int64)
         for i, data in enumerate(neighbors):
             for j, neighbor in enumerate(data):
                 if not np.isinf(neighbor[1]):
@@ -152,14 +149,10 @@ class ResiduesPreprocessor(Preprocessor):
                 xdata[0][0].tobytes())
         txn.put(SEP.join([prefix, L_NEIGHBORS]).encode(),
                 xdata[0][1].tobytes())
-        txn.put(SEP.join([prefix, L_RESIDUES]).encode(),
-                xdata[0][2].tobytes())
         # Put receptor protein in file
         txn.put(SEP.join([prefix, R_ENC_RESIDUES]).encode(),
                 xdata[1][0].tobytes())
         txn.put(SEP.join([prefix, R_NEIGHBORS]).encode(),
                 xdata[1][1].tobytes())
-        txn.put(SEP.join([prefix, R_RESIDUES]).encode(),
-                xdata[1][2].tobytes())
         # Put labels in file
         txn.put(SEP.join([prefix, LABELS]).encode(), labels.tobytes())

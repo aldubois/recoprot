@@ -7,6 +7,7 @@ from .context import recoprot
 def test_configurations():
 
     data = {
+        "dtype": "atoms",
         "bert": False,
         "database": "/tmp",
         "n_epochs": [10, 25, 50],

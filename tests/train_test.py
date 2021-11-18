@@ -59,7 +59,7 @@ def test_train_no_batch():
     # Train for 2 epochs
     # Sometimes for some weight values the loss is at 0. and don't move so we repeat
     for _ in range(10):
-        gnn = recoprot.CompleteNetwork([128, 256, 512], [128, 256], False)
+        gnn = recoprot.AtomsNetwork([128, 256, 512], [128, 256], False)
         model = gnn.to(recoprot.DEVICE)
         losses = recoprot.train(model, dataset, 2, 0.001)
         if losses[0] != 0.:
@@ -103,7 +103,7 @@ def test_train_no_batch_bert():
     # Train for 2 epochs
     # Sometimes for some weight values the loss is at 0. and don't move so we repeat
     for _ in range(10):
-        gnn = recoprot.CompleteNetwork([128, 256, 512], [128, 256], True)
+        gnn = recoprot.AtomsNetwork([128, 256, 512], [128, 256], True)
         model = gnn.to(recoprot.DEVICE)
         losses = recoprot.train(model, dataset, 2, 0.001)
         if losses[0] != 0.:

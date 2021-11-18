@@ -18,10 +18,16 @@ import pandas as pds
 
 # Internals
 from .symbols import DEVICE
-from .data import TrainingDataset, ValidationDataset
-from .nn import CompleteNetwork
+from .data import (
+    AtomsTrainingDataset,
+    AtomsValidationDataset,
+    ResiduesTrainingDataset,
+    ResiduesValidationDataset
+)
+from .nn import AtomsNetwork, ResiduesNetwork
 from .train import train, evaluate
 
+DTYPE = "dtype"
 BERT = "bert"
 DB = "database"
 N_EPOCHS = "n_epochs"
@@ -48,6 +54,7 @@ class Configurations:
     Experiences configurations for each hyperparameters.
     """
     def __init__(self, data):
+        self.dtype = data[DTYPE]
         self.bert = data[BERT]
         self.database = data[DB]
         self.n_epochs = data[N_EPOCHS]
@@ -56,8 +63,9 @@ class Configurations:
         self.dense_filters = data[DENSE]
 
     def __repr__(self):
-        return (f"Configurations(bert=self.bert"
-                f"database={self.database}"
+        return (f"Configurations(dtype={self.dtype},"
+                f" bert={self.bert}"
+                f" database={self.database}"
                 f" n_epochs={self.n_epochs},"
                 f" learning_rates={self.learning_rates},"
                 f" conv_filters={self.conv_filters},"
@@ -82,6 +90,8 @@ def experiment_main():
     logging.info(f"{configurations}")
 
     df = pds.DataFrame(columns=DF_COLUMNS)
+
+    experiment = atoms_experiment if configurations.dtype == "atoms" else residues_experiment
     
     for config in configurations:
         res = experiment(configurations.database, config)
@@ -91,10 +101,10 @@ def experiment_main():
     return
         
 
-def experiment(database, config):
+def atoms_experiment(database, config):
     # Training
-    training_set = TrainingDataset(database)
-    gnn = CompleteNetwork(config.convs, config.dense, config.bert)
+    training_set = AtomsTrainingDataset(database)
+    gnn = AtomsNetwork(config.convs, config.dense, config.bert)
     model = gnn.to(DEVICE)
     losses = train(
         model,
@@ -115,7 +125,38 @@ def experiment(database, config):
 
     
     # Validation
-    validation_set = ValidationDataset(database)
+    validation_set = AtomsValidationDataset(database)
+    logging.info("Validation set: ")
+    res[DF_AUC_VALIDATION] = evaluate(model, validation_set)
+    logging.info("    AUC: %.4f %%" % (res[DF_AUC_VALIDATION]))
+    return res
+
+
+def residues_experiment(database, config):
+    # Training
+    training_set = ResiduesTrainingDataset(database)
+    gnn = ResiduesNetwork(config.convs, config.dense, config.bert)
+    model = gnn.to(DEVICE)
+    losses = train(
+        model,
+        training_set,
+        config.n_epochs,
+        config.lr,
+    )
+
+    res = {
+        DF_N_EPOCHS: config.n_epochs,
+        DF_LR: config.lr,
+        DF_CONV: config.convs,
+        DF_DENSE: config.dense
+    }
+    logging.info("Training set: ")
+    res[DF_AUC_TRAINING] = evaluate(model, training_set)
+    logging.info("    AUC: %.4f" % (res[DF_AUC_TRAINING]))
+
+    
+    # Validation
+    validation_set = ResiduesValidationDataset(database)
     logging.info("Validation set: ")
     res[DF_AUC_VALIDATION] = evaluate(model, validation_set)
     logging.info("    AUC: %.4f %%" % (res[DF_AUC_VALIDATION]))
@@ -175,10 +216,13 @@ def _verify_conf(x):
     if not isinstance(data, dict):
         raise argparse.ArgumentTypeError(f"{x} should contain pair of key/values!\n{data}")
 
-    for key in [DB, N_EPOCHS, LR, CONV, DENSE]:
+    for key in [DTYPE, DB, N_EPOCHS, LR, CONV, DENSE]:
         if key not in data:
             raise argparse.ArgumentTypeError(f"{x} should contain the key {key}!\n{data}")
 
+    if data[DTYPE] not in ("atoms", "residues"):
+        raise argparse.ArgumentTypeError("The data type needs to be 'atoms' or 'residues'")
+        
     _is_dir(data[DB])
         
     for key in [N_EPOCHS, LR, CONV, DENSE]:

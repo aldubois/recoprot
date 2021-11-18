@@ -16,18 +16,18 @@ from .preprocess import (
     ResiduesPreprocessor,
     align_proteins_residues
 )
-from .nn import (
-    CompleteNetwork,
-    GNN,
-    NoConv
-)
+from .nn import NoConv, AtomsNetwork, ResiduesNetwork
 from .pssm import call_psiblast
 from .data import (
     build_targets,
-    ProteinsDataset,
-    TrainingDataset,
-    ValidationDataset,
-    TestingDataset
+    AtomsDataset,
+    AtomsTrainingDataset,
+    AtomsValidationDataset,
+    AtomsTestingDataset,
+    ResiduesDataset,
+    ResiduesTrainingDataset,
+    ResiduesValidationDataset,
+    ResiduesTestingDataset
 )
 from .train import train
 from .experiment import experiment_main, Configurations, Configuration

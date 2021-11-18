@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Module containing the different neural networks for the experiments.
+Module containing the different neural networks at the atom level for the experiments.
 """
 
 # Python Standard
@@ -11,10 +11,11 @@ from itertools import product
 import torch
 
 # Internal
-from .symbols import CATEGORIES, DEVICE
+from ..symbols import CATEGORIES, DEVICE
+from .fcs import NoConv
 
 
-class CompleteNetwork(torch.nn.Module):
+class AtomsNetwork(torch.nn.Module):
 
     """
     Complete neural network.
@@ -31,7 +32,7 @@ class CompleteNetwork(torch.nn.Module):
         bert : bool
             If Bert was used to pretrain the data input.
         """
-        super(CompleteNetwork, self).__init__()
+        super().__init__()
         self.conv = GNN(conv_filters, bert)
         self.fcs = NoConv(2*self.conv.filters[-1], dense_filters)
         return
@@ -55,46 +56,6 @@ class CompleteNetwork(torch.nn.Module):
     @staticmethod
     def _group_per_residue(atoms_residue, x):
         return [tensor.mean(axis=0) for tensor in _group_per_residue(atoms_residue, x)]
-
-
-class NoConv(torch.nn.Module):
-
-    """
-    Neural network without any convolution layer.
-    """
-
-    def __init__(self, input_features, layers_sizes):
-        """
-        Parameters
-        ----------
-        layers_sizes : list of integer
-            Size of each fully connected layers.
-        """
-        super(NoConv, self).__init__()
-
-        # Determine in_features and out_features per layer
-        inout_features = [(input_features, layers_sizes[0])]
-        for inout_feature in zip(layers_sizes[:-1], layers_sizes[1:]):
-            inout_features.append(inout_feature)
-        inout_features.append([layers_sizes[-1], 1])
-
-        # Instanciate each
-        self.fcs = torch.nn.Sequential(
-            *[torch.nn.Linear(in_feature, out_feature, device=DEVICE)
-              for in_feature, out_feature in inout_features]
-        )
-        return
-
-
-    def forward(self, x):
-        """
-        Apply each fully connected layers to the
-        input data and call softmax on the results.
-        """
-        for fc in self.fcs[:-1]:
-            x = torch.nn.functional.relu(fc(x))
-        return self.fcs[-1](x)
-
 
 
 class GNN_Layer(torch.nn.Module):
