@@ -94,9 +94,7 @@ def test_read_write_atoms_bert():
 
     assert name_calc == PROT_NAME
     assert (x_ref[0][0] == x_calc[0][0].numpy()).all()
-    print(x_ref[0][1].shape)
-    print(x_calc[0][1].numpy().shape)
-    assert (x_ref[0][1] == x_calc[0][1].numpy())
+    assert (x_ref[0][1] == x_calc[0][1].numpy()).all()
     assert (x_ref[0][2] == x_calc[0][2].numpy()).all()
     assert (x_ref[0][3] == x_calc[0][3].numpy()).all()
     assert (torch.from_numpy(np.copy(x_ref[0][4])) == x_calc[0][4]).all()

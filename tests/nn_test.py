@@ -44,7 +44,7 @@ def test_atoms_network():
 
 def test_atoms_network_bert():
 
-    options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 20000000, [PROT_NAME], True, True)
+    options = recoprot.PreprocessorOptions(DATA_DIR, '/tmp/test', 50000000, [PROT_NAME], True, True)
     preprocess = recoprot.AtomsPreprocessor(options)
     envw = lmdb.open(options.out, map_size=options.db_size)
     with envw.begin(write=True) as txn:
