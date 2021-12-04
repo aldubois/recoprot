@@ -73,8 +73,8 @@ class ProteinInteractionDataset(Dataset):
     @staticmethod
     def _build_targets(distances):
         # The label is 1
-        labels = (distances <= 6.)
-        cases = labels | (distances > 7.)
+        labels = (distances <= 7.)
+        cases = labels | (distances > 8.)
         labels = labels.astype(np.float32)
         pos_weight = sum(cases) / (sum(labels) + 1)
         weights = (pos_weight - 1) * labels + cases
