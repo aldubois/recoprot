@@ -41,11 +41,17 @@ DF_CONV = "Conv filters"
 DF_DENSE = "Dense filters"
 DF_AUC_TRAINING = "AUC Training"
 DF_AUC_VALIDATION = "AUC Validation"
+DISTANCE = "distance"
 
-DF_COLUMNS = [DF_N_EPOCHS, DF_LR, DF_CONV, DF_DENSE, DF_AUC_TRAINING, DF_AUC_VALIDATION]
+DF_COLUMNS = [DF_N_EPOCHS, DF_LR, DF_CONV, DF_DENSE, DF_AUC_TRAINING,
+              DF_AUC_VALIDATION, DISTANCE]
 
 
-Configuration = namedtuple("Configuration", ["bert", "n_epochs", "lr", "convs", "dense"])
+Configuration = namedtuple(
+    "Configuration",
+    ["bert", "n_epochs", "lr",
+     "convs", "dense", "alpha"]
+)
 
 
 class Configurations:
@@ -61,6 +67,7 @@ class Configurations:
         self.learning_rates = data[LR]
         self.conv_filters = data[CONV]
         self.dense_filters = data[DENSE]
+        self.alpha = data[DISTANCE]
 
     def __repr__(self):
         return (f"Configurations(dtype={self.dtype},"
@@ -69,7 +76,8 @@ class Configurations:
                 f" n_epochs={self.n_epochs},"
                 f" learning_rates={self.learning_rates},"
                 f" conv_filters={self.conv_filters},"
-                f" dense_filters={self.dense_filters})")
+                f" dense_filters={self.dense_filters},"
+                f" alpha={self.alpha})")
         
     def __iter__(self):
         return (
