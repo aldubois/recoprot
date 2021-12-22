@@ -30,7 +30,8 @@ from ..symbols import (
     R_NEIGHBORS_OUT,
     R_RESIDUES,
     CATEGORIES,
-    LABELS
+    MIN_DISTANCE,
+    ALPHA_DISTANCE
 )
 from .preprocessor import Preprocessor
 from .alignment import align_proteins_residues
@@ -59,8 +60,8 @@ class AtomsPreprocessor(Preprocessor):
         -------
         xdata : tuple
             Input of the GNN.
-        labels : torch.tensor
-            Target for the GNN.
+        labels : Distances
+            Potential distance labels for the GNN.
         """
         res_l_b, res_r_b, res_l_u, res_r_u = AtomsPreprocessor._read_structure(
             folder,
@@ -76,7 +77,7 @@ class AtomsPreprocessor(Preprocessor):
             AtomsPreprocessor._preprocess_protein(res_l_u, tokenizer, model),
             AtomsPreprocessor._preprocess_protein(res_r_u, tokenizer, model)
         )
-        labels = AtomsPreprocessor._compute_residues_alpha_carbon_distance(res_l_b, res_r_b)
+        labels = AtomsPreprocessor._compute_residues_distance(res_l_b, res_r_b)
         return xdata, labels
 
 
@@ -202,7 +203,8 @@ class AtomsPreprocessor(Preprocessor):
         txn.put(SEP.join([prefix, R_RESIDUES]).encode(),
                 xdata[1][4].tobytes())
         # Put labels in file
-        txn.put(SEP.join([prefix, LABELS]).encode(), labels.tobytes())
+        txn.put(SEP.join([prefix, MIN_DISTANCE]).encode(), labels.min.tobytes())
+        txn.put(SEP.join([prefix, ALPHA_DISTANCE]).encode(), labels.alpha.tobytes())
 
 
     @staticmethod

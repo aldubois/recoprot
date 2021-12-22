@@ -58,11 +58,11 @@ def label_data(residues1, residues2, limit=6.):
         For each pair of residue, indicate if the two
         residues interact with each other.
     """
-    distances = recoprot.AtomsPreprocessor._compute_residues_alpha_carbon_distance(
+    distances = recoprot.AtomsPreprocessor._compute_residues_distance(
         residues1,
         residues2
     )
-    return (distances <= limit).astype(np.float32)
+    return (distances.alpha <= limit).astype(np.float32)
 
 
 def test_reader_same_file():

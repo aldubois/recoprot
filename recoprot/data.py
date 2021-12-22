@@ -28,7 +28,8 @@ from .symbols import (
     R_NEIGHBORS_IN,
     R_NEIGHBORS_OUT,
     R_RESIDUES,
-    LABELS,
+    MIN_DISTANCE,
+    ALPHA_DISTANCE,
     N_PROTEINS,
     PROTEINS,
     TRAINING,
@@ -46,12 +47,13 @@ class ProteinInteractionDataset(Dataset):
     
     PROT_NAMES = PROTEINS
 
-    def __init__(self, dbpath, bert):
+    def __init__(self, dbpath, bert, alpha=True):
         self.env = lmdb.open(dbpath)
         self.start = PROTEINS.index(self.PROT_NAMES[0])
         self.stop = PROTEINS.index(self.PROT_NAMES[-1]) + 1
         self.size = self.stop - self.start
         self.bert = bert
+        self.alpha = alpha
 
     def __getitem__(self, idx):
         if (idx < 0 or idx >= self.size):
@@ -67,14 +69,14 @@ class ProteinInteractionDataset(Dataset):
         self.env.close()
 
     @abc.abstractmethod
-    def _read_protein_pair(txn, idx):
+    def _read_protein_pair(self, txn, idx):
         pass
 
     @staticmethod
     def _build_targets(distances):
         # The label is 1
-        labels = (distances <= 7.)
-        cases = labels | (distances > 8.)
+        labels = (distances <= 6.)
+        cases = np.logical_not(labels)
         labels = labels.astype(np.float32)
         pos_weight = sum(cases) / (sum(labels) + 1)
         weights = (pos_weight - 1) * labels + cases
@@ -187,9 +189,10 @@ class AtomsDataset(ProteinInteractionDataset):
         )),
             torch.from_numpy(np.copy(r_residues))
         )
-        
+        distance_name = ALPHA_DISTANCE if self.alpha else MIN_DISTANCE
+        label_name = SEP.join([prefix, distance_name])
         distances = np.frombuffer(
-            txn.get(SEP.join([prefix, LABELS]).encode()),
+            txn.get(label_name.encode()),
             dtype=np.float32
         )
         targets = self._build_targets(distances)
@@ -283,9 +286,10 @@ class ResiduesDataset(ProteinInteractionDataset):
                 r_neighbors.reshape((-1, 10))
             )),
         )
-        
+        distance_name = ALPHA_DISTANCE if self.alpha else MIN_DISTANCE
+        label_name = SEP.join([prefix, distance_name])
         distances = np.frombuffer(
-            txn.get(SEP.join([prefix, LABELS]).encode()),
+            txn.get(label_name.encode()),
             dtype=np.float32
         )
         targets = self._build_targets(distances)

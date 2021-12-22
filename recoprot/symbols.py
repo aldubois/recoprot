@@ -19,6 +19,8 @@ NEIGHBORS_IN = "neighbors_in"
 NEIGHBORS_OUT = "neighbors_out"
 ATOMS = "atoms"
 RESIDUES = "residues"
+MIN_DISTANCE = "min_distance"
+ALPHA_DISTANCE = "alpha_distance"
 LABELS = "labels"
 N_PROTEINS = "n_proteins"
 

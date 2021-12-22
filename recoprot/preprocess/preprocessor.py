@@ -11,6 +11,7 @@ import logging
 import argparse
 import warnings
 from itertools import product
+from collections import namedtuple
 
 # External Dependencies
 import numpy as np
@@ -31,6 +32,9 @@ from ..symbols import (
     UNBOUND_LIGAND,
     UNBOUND_RECEPTOR,
 )
+
+
+Distances = namedtuple("Distances", ["alpha", "min"])
 
 
 class PreprocessorOptions:
@@ -189,7 +193,8 @@ class Preprocessor:
             self.tokenizer,
             self.model
         )
-        self._verify_data(xdata, labels)
+        self._verify_data(xdata, labels.min)
+        self._verify_data(xdata, labels.alpha)
         self._write_data(pname, xdata, labels, txn, i)
         print()
 
@@ -284,13 +289,19 @@ class Preprocessor:
 
     
     @staticmethod
-    def _compute_residues_alpha_carbon_distance(residues1, residues2):
-        # Get the residues number per atom
-        distances = [
-            Preprocessor._compute_distance(res1, res2)
+    def _compute_residues_distance(residues1, residues2):
+        alpha_distances = [
+            Preprocessor._compute_alpha_distance(res1, res2)
             for res1, res2 in product(residues1, residues2)
         ]
-        return np.array(distances).astype(np.float32)
+        min_distances = [
+            Preprocessor._compute_min_distance(res1, res2)
+            for res1, res2 in product(residues1, residues2)
+        ]
+        return Distances(
+            alpha=np.array(alpha_distances).astype(np.float32),
+            min=np.array(min_distances).astype(np.float32)
+        )
 
     @staticmethod
     def _find_alpha_carbon(residue):
@@ -301,14 +312,20 @@ class Preprocessor:
         return None
         
     @staticmethod
-    def _compute_distance(residue1, residue2):
+    def _compute_alpha_distance(residue1, residue2):
         atom1 = Preprocessor._find_alpha_carbon(residue1)
         atom2 = Preprocessor._find_alpha_carbon(residue2)
         if atom1 is None or atom2 is None:
             return np.Inf
         else:
             return atom1 - atom2
-        
+
+    @staticmethod
+    def _compute_min_distance(residue1, residue2):
+        distance = np.Inf
+        for atom1, atom2 in product(residue1, residue2):
+            distance = min(distance, atom1 - atom2)
+        return distance
     
     @staticmethod
     def _call_protbert(residues, tokenizer, model):

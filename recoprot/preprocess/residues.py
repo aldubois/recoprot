@@ -19,7 +19,8 @@ from ..symbols import (
     R_ENC_RESIDUES,
     R_NEIGHBORS,
     R_RESIDUES,
-    LABELS
+    MIN_DISTANCE,
+    ALPHA_DISTANCE
 )
 from .preprocessor import Preprocessor
 from .alignment import align_proteins_residues
@@ -64,7 +65,7 @@ class ResiduesPreprocessor(Preprocessor):
             ResiduesPreprocessor._preprocess_protein(res_l_u, tokenizer, model),
             ResiduesPreprocessor._preprocess_protein(res_r_u, tokenizer, model)
         )
-        labels = Preprocessor._compute_residues_alpha_carbon_distance(res_l_b, res_r_b)
+        labels = Preprocessor._compute_residues_distance(res_l_b, res_r_b)
         return xdata, labels
 
 
@@ -105,7 +106,7 @@ class ResiduesPreprocessor(Preprocessor):
         for i, residue in enumerate(residues):
             #distances = [ if i != j for j, residue2 in enumerate(residues)]
             distances = [
-                (j, Preprocessor._compute_distance(residue, residue2))
+                (j, Preprocessor._compute_min_distance(residue, residue2))
                 for j, residue2 in enumerate(residues) if i != j
 
             ]
@@ -155,4 +156,5 @@ class ResiduesPreprocessor(Preprocessor):
         txn.put(SEP.join([prefix, R_NEIGHBORS]).encode(),
                 xdata[1][1].tobytes())
         # Put labels in file
-        txn.put(SEP.join([prefix, LABELS]).encode(), labels.tobytes())
+        txn.put(SEP.join([prefix, MIN_DISTANCE]).encode(), labels.min.tobytes())
+        txn.put(SEP.join([prefix, ALPHA_DISTANCE]).encode(), labels.alpha.tobytes())
