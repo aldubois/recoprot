@@ -41,10 +41,10 @@ DF_CONV = "Conv filters"
 DF_DENSE = "Dense filters"
 DF_AUC_TRAINING = "AUC Training"
 DF_AUC_VALIDATION = "AUC Validation"
-DISTANCE = "distance"
+ALPHA = "alpha"
 
 DF_COLUMNS = [DF_N_EPOCHS, DF_LR, DF_CONV, DF_DENSE, DF_AUC_TRAINING,
-              DF_AUC_VALIDATION, DISTANCE]
+              DF_AUC_VALIDATION, ALPHA]
 
 
 Configuration = namedtuple(
@@ -67,7 +67,7 @@ class Configurations:
         self.learning_rates = data[LR]
         self.conv_filters = data[CONV]
         self.dense_filters = data[DENSE]
-        self.alpha = data[DISTANCE]
+        self.alpha = data[ALPHA]
 
     def __repr__(self):
         return (f"Configurations(dtype={self.dtype},"
@@ -86,7 +86,8 @@ class Configurations:
                                 self.n_epochs,
                                 self.learning_rates,
                                 self.conv_filters,
-                                self.dense_filters)
+                                self.dense_filters,
+                                [self.alpha])
         )
 
 
@@ -99,7 +100,10 @@ def experiment_main():
 
     df = pds.DataFrame(columns=DF_COLUMNS)
 
-    experiment = atoms_experiment if configurations.dtype == "atoms" else residues_experiment
+    experiment = (
+        atoms_experiment if configurations.dtype == "atoms"
+        else residues_experiment
+    )
     
     for config in configurations:
         res = experiment(configurations.database, config)
@@ -111,7 +115,7 @@ def experiment_main():
 
 def atoms_experiment(database, config):
     # Training
-    training_set = AtomsTrainingDataset(database)
+    training_set = AtomsTrainingDataset(database, config.bert, config.alpha)
     gnn = AtomsNetwork(config.convs, config.dense, config.bert)
     model = gnn.to(DEVICE)
     losses = train(
@@ -133,7 +137,7 @@ def atoms_experiment(database, config):
 
     
     # Validation
-    validation_set = AtomsValidationDataset(database)
+    validation_set = AtomsValidationDataset(database, config.bert, config.alpha)
     logging.info("Validation set: ")
     res[DF_AUC_VALIDATION] = evaluate(model, validation_set)
     logging.info("    AUC: %.4f %%" % (res[DF_AUC_VALIDATION]))
@@ -142,7 +146,7 @@ def atoms_experiment(database, config):
 
 def residues_experiment(database, config):
     # Training
-    training_set = ResiduesTrainingDataset(database)
+    training_set = ResiduesTrainingDataset(database, config.bert, config.alpha)
     gnn = ResiduesNetwork(config.convs, config.dense, config.bert)
     model = gnn.to(DEVICE)
     losses = train(
@@ -162,9 +166,8 @@ def residues_experiment(database, config):
     res[DF_AUC_TRAINING] = evaluate(model, training_set)
     logging.info("    AUC: %.4f" % (res[DF_AUC_TRAINING]))
 
-    
     # Validation
-    validation_set = ResiduesValidationDataset(database)
+    validation_set = ResiduesValidationDataset(database, config.bert, config.alpha)
     logging.info("Validation set: ")
     res[DF_AUC_VALIDATION] = evaluate(model, validation_set)
     logging.info("    AUC: %.4f %%" % (res[DF_AUC_VALIDATION]))
@@ -205,7 +208,7 @@ def parse_experiment_args():
     else:
         logging.basicConfig(format=log_fmt)
     
-    return _verify_conf(args.conf), args.output_file
+    return _load_conf(args.conf), args.output_file
 
 
 def _conf(x):
@@ -216,7 +219,7 @@ def _conf(x):
     return x
 
 
-def _verify_conf(x):
+def _load_conf(x):
     
     with open(x) as f:
         data = yaml.load(f, Loader=yaml.FullLoader)
@@ -224,7 +227,7 @@ def _verify_conf(x):
     if not isinstance(data, dict):
         raise argparse.ArgumentTypeError(f"{x} should contain pair of key/values!\n{data}")
 
-    for key in [DTYPE, DB, N_EPOCHS, LR, CONV, DENSE]:
+    for key in [DTYPE, DB, N_EPOCHS, LR, CONV, DENSE, ALPHA]:
         if key not in data:
             raise argparse.ArgumentTypeError(f"{x} should contain the key {key}!\n{data}")
 
